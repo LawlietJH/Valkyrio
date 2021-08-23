@@ -14,13 +14,14 @@ S.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 # Set constants
 PORT = 57575
-MapW, MapH = 1600, 1600
+# ~ MapW, MapH = 1600, 1600
 HOST_NAME = socket.gethostname()
 SERVER_IP = socket.gethostbyname(HOST_NAME)
 
 # try to connect to server
 try:
     S.bind((SERVER_IP, PORT))
+    # ~ S.bind(('192.168.1.72', PORT))
 except socket.error as e:
     print(str(e))
     print('[SERVER] Server could not start')
@@ -38,7 +39,7 @@ _id = 0
 start = False
 start_time = 0
 game_time = 'Starting Soon'
-colors = [(128,200,100),(128,200,200),(128,100,100),(128,100,200),(200,100,100),(200,200,200),(200,200,100),(200,100,200)]
+# ~ colors = [(128,200,100),(128,200,200),(128,100,100),(128,100,200),(200,100,100),(200,200,200),(200,200,100),(200,100,200)]
 
 # FUNCTIONS ============================================================
 
@@ -51,27 +52,32 @@ def threaded_client(conn, _id):
 	
 	data = conn.recv(16)
 	name = data.decode('utf-8')
-	print('[LOG]', name, 'connected to the server.')
+	print(f"[LOG] '{name}' connected to the server.")
 	
 	players[current_id] = {
-		'x': random.randrange(600,1200),
-		'y': random.randrange(600,900),
-		'score': 0,
-		'name': name,
-		'ship': 'Prometheus',
-		'vel': 50,
-		'hp': 350,
-		'sp': 250,
+		'x': random.randrange(200,240),
+		'y': random.randrange(200,240),
+		'score': 0,		# Score
+		'name': name,	# Username
+		'vel': 50,		# Speed
+		'ang': 0,		# Angle
+		'atk': False,	# Attacking
+		'ship': {
+			'name': 'Prometheus',	# Ship Name
+			'hp': 350,				# Health Points
+			'sp': 250,				# Shield Points
+			'chp': 350,				# Health Points
+			'csp': 250,				# Current Shield Points
+			'dtry': False,			# Destroyed
+		},
 		'selected': {
-			'name': '',
-			'id': -1,
+			'name': '',		# Selected Username
+			'id': -1,		# Selected ID user
 			# ~ 'x': 0,
 			# ~ 'y': 0,
 			# ~ 'angle': 0,
 			# ~ 'dist': 0
-		},
-		'angle': 0,
-		'color': random.choice(colors)
+		}
 	}
 	
 	conn.send(str.encode(str(current_id)))
@@ -81,19 +87,24 @@ def threaded_client(conn, _id):
 		try:
 			game_time = int(time.perf_counter()-start_time)
 			
-			data = conn.recv(64)
+			data = conn.recv(1024)
 			
 			if not data: break
 			
 			data = data.decode('utf-8')
 			# ~ print('[DATA] Recieved', data, 'from client id:', current_id)
 			
-			if data.startswith('move:'):
+			if data.startswith('data:'):
 				
-				data = data[len('move:'):]
+				data = data[len('data:'):]
 				data = json.loads(data)
 				players[current_id]['x'] = data['x']
 				players[current_id]['y'] = data['y']
+				players[current_id]['ship']['chp'] = data['chp']
+				players[current_id]['ship']['csp'] = data['csp']
+				players[current_id]['ship']['dtry'] = data['dtry']
+				players[current_id]['ang'] = data['ang']
+				players[current_id]['atk'] = data['atk']
 				
 				send_data = pickle.dumps((players, game_time))
 			
@@ -109,37 +120,20 @@ def threaded_client(conn, _id):
 				selected_id   = data['id']
 				name = players[current_id]['name']
 				
-				if selected_name:
-					print(f'[SELECT] {name} select to {selected_name}')
-				else:
+				if not selected_name:
 					unselected = players[current_id]['selected']['name']
-					print(f'[UNSELECT] {name} unselect to {unselected}')
+					print(f"[UNSELECT] '{name}' unselect to '{unselected}'")
+				else:
+					print(f"[SELECT] '{name}' select to '{selected_name}'")
 				
 				players[current_id]['selected']['name'] = selected_name
 				if selected_name:
 					players[current_id]['selected']['id'] = int(selected_id)
-					# ~ players[current_id]['selected']['x']  = int(data['x'])
-					# ~ players[current_id]['selected']['y']  = int(data['y'])
 				else:
 					players[current_id]['selected']['id'] = -1
-					# ~ players[current_id]['selected']['x']  = 0
-					# ~ players[current_id]['selected']['y']  = 0
-					players[current_id]['selected']['angle'] = 0
-					players[current_id]['selected']['dist']  = 0
 				
 				send_data = pickle.dumps(players)
 			
-			elif data.startswith('angle_dist:'):
-				
-				data = data[len('angle_dist:'):]
-				data = json.loads(data)
-				# ~ players[current_id]['selected']['x'] = int(data['x'])
-				# ~ players[current_id]['selected']['y'] = int(data['y'])
-				players[current_id]['selected']['angle'] = int(data['angle'])
-				players[current_id]['selected']['dist']  = int(data['dist'])
-				
-				send_data = pickle.dumps(players)
-				
 			else: send_data = pickle.dumps((players, game_time))
 			
 			conn.send(send_data)
@@ -150,7 +144,7 @@ def threaded_client(conn, _id):
 		
 		time.sleep(FPS)
 	
-	print('[DISCONNECT] Name:', name, ', Client Id:', current_id, 'disconnected')
+	print(f'[DISCONNECT] Name: {name}, Client Id: {current_id} disconnected')
 	
 	connections -= 1
 	del players[current_id]
@@ -170,7 +164,7 @@ print('[SERVER] Waiting for connections')
 while True:
 	
 	host, addr = S.accept()
-	print('[CONNECTION] Connected to:', addr)
+	print(f'[CONNECTION] Connected to: {addr}')
 	
 	if addr[0] == SERVER_IP and not(start):
 		start = True

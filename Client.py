@@ -7,7 +7,7 @@ class Network:
 	
 	def __init__(self):
 		self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		self.host = '10.6.X.X'
+		self.host = '192.168.X.X'
 		self.port = 57575
 		self.addr = (self.host, self.port)
 	
@@ -26,7 +26,7 @@ class Network:
 				self.client.send(pickle.dumps(data))
 			else:
 				self.client.send(str.encode(data))
-			reply = self.client.recv(2048*4)
+			reply = self.client.recv(1024)
 			try:
 				reply = pickle.loads(reply)
 			except Exception as e:
