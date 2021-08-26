@@ -15,13 +15,13 @@ import os
 
 __project__ = 'Valkyrio'
 __author__  = 'LawlietJH'
-__version__ = '0.0.2 (Alfa)'
+__version__ = '0.0.3 (Alfa)'
 
 __license__ = 'MIT'
 __status__  = 'Development'
 __framework__    = 'pygame'
 __description__  = 'Juego 2D online con pygame inspirado en los juegos clasicos de destruir naves.'
-__version_date__ = '2021/08/23'
+__version_date__ = '26/08/2021'
 
 #=======================================================================
 #=======================================================================
@@ -124,7 +124,12 @@ class Config:
 			'Rojo':         (255,  0,  0),
 			'Verde':        (  0,255,  0),
 			'Azul':         (  0,  0,255),
-			'Cyan':         (  0,200,220),
+			
+			'HP':           (  0,210,  0),		# HP
+			'HP Opaco':     (  0,150,  0),		# HP 0
+			'SP':           (  0,180,200),		# SP
+			'SP Opaco':     (  0,130,140),		# SP 0
+			
 			'Verde S':      ( 24, 25, 30),
 			'Verde N':      (  0, 50, 30),
 			'Verde C':      (  0, 75, 30),
@@ -160,11 +165,13 @@ class Config:
 			'hp-sp': True
 		}
 		
-		WEAPON = {
+		self.WEAPON = {
 			'Laser': {
 				'path': 'img/weapons/laser.png',
 				'dmg': 100,
-				'dist': 400
+				'dist': 400,
+				'pct_sp': .7,
+				'mult': 1
 			}
 		}
 		
@@ -172,35 +179,61 @@ class Config:
 		self.SHIP = {
 			'Prometheus': {
 				'path': 'img/Prometheus.png',
+				'weapon': 'Laser',
 				'speed': int(.5 * self.speedmul),
+				'spd_lvl': 0,
 				'hp':    350,
 				'sp':    250
 			}
 		}
 		
-		self.limitX     = 10000							# Limit on X Coord
-		self.limitY     = 10000							# Limit on Y Coord
-		self.run        = False							# Game Run
-		self.dtdiv      = 10 * self.speedmul			# Detla Time Divide
-		self.posdiv     = 20							# Real pixel posicion X and Y divided
-		self.MFPS       = 120							# Max Frames per Second
-		self.fps        = 60							# Number of Frames per Second
-		self.matrix_bg  = 15							# Squares on Backgrand. Example: 15x15
-		self.radDmg     = 50							# Radioactive Damage 
+		# Username settings
+		self.name_min_char_len = 1						# Minimum Character Length
+		self.name_max_char_len = 24						# Maximum Character Length
 		
-		self.BASE_SPEED = 1 * self.speedmul				# Base Speed of Ships
-		self.MAX_SPEED  = 2 * self.speedmul				# Max Speed of Ships
-		self.RESOLUTION = (1280, 768)					# Resolution
-		# ~ self.RESOLUTION = (720, 480)					# Resolution
-		self.W = self.RESOLUTION[0]
-		self.H = self.RESOLUTION[1]
-		self.CENTER = {'x': self.W//2, 'y': self.H//2}	# Center Position
-		self.SELECT_MIN_DIST = 40
+		# Data settings
+		self.BASE_SPEED = 1  * self.speedmul			# Base Speed of Ships
+		self.MAX_SPEED  = 2  * self.speedmul			# Max Speed of Ships
+		self.dtdiv = 10 * self.speedmul					# Detla Time Divide
+		self.posdiv = 20								# Divide the actual position of pixels X and Y to generate coordinates for the map
+		self.rad_dmg = 500								# Radioactive Damage 
+		self.min_select_dist = 32						# Minimum target selection distance (on pixels)
 		
+		# Counters
+		self.curr_frame = 0								# Current Frame
+		
+		# Background matrix settings
+		self.matrix_bg_sqr = 15							# Type: False = variable. Squares on Background. Example: 15x15
+		self.xy_pixels_sqr = 50							# Type: True = fixed.     X and Y pixels in squares on background
+		self.matrix_bg_fix = True						# Select Type: fixed or variable
+		
+		# Screen settings
+		# ~ self.RESOLUTION = (1280, 768)					# Resolution
+		self.RESOLUTION = (600, 450)					# Resolution
+		self.antialiasing = True						# Anti-aliasing is a method by which you can remove irregularities that appear in objects in PC games.
+		self.run = False								# Game Run
+		self.limitX = 10000								# Limit on X Coord
+		self.limitY = 10000								# Limit on Y Coord
+		self.MFPS = 120									# Max Frames per Second
+		self.fps = 60									# Number of Frames per Second
+		
+		# Objects that are off the screen disappear
 		self.limit_obj_dist = int(utils.euclideanDistance((
 								self.CENTER['x'], self.CENTER['y']),
 								(0, 0)
 							)) + 200
+	
+	@property
+	def CENTER(self):
+		return {'x': self.RESOLUTION[0]//2, 'y': self.RESOLUTION[1]//2}
+	
+	@property
+	def W(self):
+		return self.RESOLUTION[0]
+	
+	@property
+	def H(self):
+		return self.RESOLUTION[1]
 
 
 class Weapon:
@@ -208,6 +241,17 @@ class Weapon:
 	def __init__(self, name):
 		self.name = name
 		self.path = config.WEAPON[name]
+		self.dmg  = config.WEAPON[name]['dmg']
+		self.dist = config.WEAPON[name]['dist']
+		self.pct_sp = config.WEAPON[name]['pct_sp']
+		self.mult = config.WEAPON[name]['mult']
+		self.init_time = 0
+	
+	def perSecond(self, t=1):
+		if time.perf_counter() - self.init_time >= t:
+			self.init_time = time.perf_counter()
+			return True
+		return False
 
 
 class Ship:
@@ -216,39 +260,42 @@ class Ship:
 		
 		self.name = name
 		self.base = config.SHIP[name]
+		self.weapon = Weapon(self.base['weapon'])
 		self.destroyed = False
-		
-		self.speed  = config.BASE_SPEED
-		self.speed += self.base['speed']
+		self.spd_lvl = self.base['spd_lvl']
 		
 		# Health
 		self.hp  = self.base['hp']		# Health points
 		self.chp = self.hp				# Current Health Points
 		self.lhp = 1					# Level Health Points
 		self.pct_hp = .3				# Health Damage Percentage
-		self.wait_hp_init = 0
-		self.wait_hp_init_ini = 0
-		self.wait_hp_init_max = 3
-		self.wait_hp_max  = 3
-		self.wait_hp_pct  = .1			# Health+ Percentage
+		self.heal_hp = False
+		self.time_hp_init = 0			# Time Counter to heal HP
 		
 		# Shield
-		self.shield_unlocked = True
+		self.shield_unlocked = False
 		self.sp  = self.base['sp']		# Shield points
 		self.csp = self.sp				# Current Shield Points
 		self.lsp = 0					# Level Shield Points
 		self.pct_sp = .7				# Shield Damage Percentage
-		self.wait_sp_init = 0
-		self.wait_sp_init_ini = 0
-		self.wait_sp_init_max = 10
-		self.wait_sp_max  = 1
-		self.wait_sp_pct  = .05			# Shield+ Percentage
+		self.heal_sp = False
+		self.time_sp_init = 0			# Time Counter to heal SP
 		
 		self.timeOnBorder = 0
 		
 		# ~ self.damageRecv = [[50, time.perf_counter()],[150, time.perf_counter()]]
 		self.damageRecv = []
 		self.healthRecv = []
+	
+	@property
+	def speed(self):
+		speed  = config.BASE_SPEED
+		speed += self.base['speed']
+		speed += self.spd_lvl
+		return speed
+	
+	def speedLevelUP(self, lvl=1):
+		self.spd_lvl += lvl
 	
 	def levelUpHP(self, lvl=1):					# Incrementa de nivel el HP
 		inc = self.base['hp'] * lvl
@@ -258,15 +305,17 @@ class Ship:
 	
 	def levelUpSP(self, lvl=1):					# Incrementa de nivel el SP
 		if self.shield_unlocked:
-			inc = self.base['hp'] * lvl
+			inc = self.base['sp'] * lvl
 			self.sp += inc
 			self.csp += inc
 			self.lsp += lvl
 	
 	def recvDamage(self, damage, pct_sp=None, mult=1, draw=True):			# Registra el daño recibido para mostrarlo
 		
-		self.wait_hp_init = 0
-		self.wait_sp_init = 0
+		self.heal_hp = False
+		self.heal_sp = False
+		self.time_hp_init = 0
+		self.time_sp_init = 0
 		
 		if player.ship.chp == 0:
 			self.destroyed = True
@@ -289,6 +338,38 @@ class Ship:
 		if self.chp < 0: self.chp = 0
 		
 		if draw: self.damageRecv.append([damage*mult, time.perf_counter()])
+	
+	def healHP(self, pct=10, sec_init=3, sec=3):
+		if not self.chp >= self.hp:
+			if self.heal_hp:
+				if self.time_hp_init == 0:
+					self.time_hp_init = time.perf_counter()
+				if time.perf_counter()-self.time_hp_init >= sec:
+					hp_add = self.hp * (pct/100)
+					if self.chp < self.hp: self.chp += int(hp_add)
+					if self.chp > self.hp: self.chp = self.hp
+					self.time_hp_init = 0
+			else:
+				if self.time_hp_init == 0:
+					self.time_hp_init = time.perf_counter()
+				if time.perf_counter()-self.time_hp_init >= sec_init:
+					self.heal_hp = True
+	
+	def healSP(self, pct=5, sec_init=10, sec=1):
+		if not self.csp >= self.sp:
+			if self.heal_sp:
+				if self.time_sp_init == 0:
+					self.time_sp_init = time.perf_counter()
+				if time.perf_counter()-self.time_sp_init >= sec:
+					sp_add = self.sp * (pct/100)
+					if self.csp < self.sp: self.csp += int(sp_add)
+					if self.csp > self.sp: self.csp = self.sp
+					self.time_sp_init = 0
+			else:
+				if self.time_sp_init == 0:
+					self.time_sp_init = time.perf_counter()
+				if time.perf_counter()-self.time_sp_init >= sec_init:
+					self.heal_sp = True
 
 
 class Player:
@@ -304,18 +385,28 @@ class Player:
 		
 		self.score = None
 		self.id = id_
-		self.x = None
-		self.y = None
+		self.x = 0
+		self.y = 0
 		
 		self.angle = 0
 		self.attacking = False
 		self.under_attack = False
 		
 		self.selected = {
-			'id': '',
+			'id':   -1,
 			'name': '',
-			'dist': ''
+			'dist': '',
+			'dmginfo': {
+				'dmg':     0,		# Damage caused by the player.
+				'pct_sp': .7,		# Damage distributed in percentage of SP and HP.
+				'mult':    1,		# Damage multiplier.
+			}
 		}
+		
+		self.curr_pos = (
+			int(self.x/config.posdiv),
+			int(self.y/config.posdiv)
+		)
 	
 	def __str__(self):
 		text = f"<'Name':'{self.name}', 'ID':'{self.id}'>"
@@ -327,22 +418,46 @@ class Player:
 		data_f  = 'data:{{'
 		data_f +=   '"x":{},'
 		data_f +=   '"y":{},'
-		data_f +=   '"chp":{},'
-		data_f +=   '"csp":{},'
-		data_f +=   '"dtry":"{}",'
 		data_f +=   '"ang":{},'
-		data_f +=   '"atk":"{}"'
+		data_f +=   '"atk":"{}",'
+		data_f +=   '"shipdata":{{'
+		data_f +=     '"hp":{},'
+		data_f +=     '"sp":{},'
+		data_f +=     '"chp":{},'
+		data_f +=     '"csp":{},'
+		data_f +=     '"s_unlkd":"{}",'
+		data_f +=     '"dtry":"{}",'
+		data_f +=     '"spd_lvl":{}'
+		data_f +=   '}},'
+		data_f +=   '"dmginfo":{{'
+		data_f +=     '"id":{},'
+		data_f +=     '"dmg":{},'
+		data_f +=     '"pct_sp":{},'
+		data_f +=     '"mult":{}'
+		data_f +=   '}}'
 		data_f += '}}'
 		
 		data = data_f.format(
 			round(self.x, 2),
 			round(self.y, 2),
+			self.angle,
+			self.attacking,
+			self.ship.hp,
+			self.ship.sp,
 			self.ship.chp,
 			self.ship.csp,
+			self.ship.shield_unlocked,
 			self.ship.destroyed,
-			self.angle,
-			self.attacking
+			self.ship.spd_lvl,
+			self.selected['id'],
+			self.selected['dmginfo']['dmg'],
+			self.selected['dmginfo']['pct_sp'],
+			self.selected['dmginfo']['mult']
 		)
+		
+		self.selected['dmginfo']['dmg']    = 0
+		self.selected['dmginfo']['pct_sp'] = 0
+		self.selected['dmginfo']['mult']   = 0
 		
 		return data
 	
@@ -350,21 +465,48 @@ class Player:
 		img = self.img_orig
 		self.img = pygame.transform.rotate(img, angle)
 	
-	def loadData(self, player):
+	def resize(self, image, scale=1):
+		rect = image.get_rect()
+		wdth_hgt = (int(rect[2]*scale), int(rect[3]*scale))
+		image = pygame.transform.scale(image, wdth_hgt)
+		return image
+	
+	def antialiasing(self, img):
+		"""
+		Anti-aliasing by average of color code in four pixels
+		with subsequent use of the average in a smaller surface
+		"""
+		rect = image.get_rect()			#	width		height
+		new_img = pygame.surface.Surface((rect[2]//1, rect[3]//1))
+		
+		for y in range(0, rect[3]-1):
+			for x in range(0, rect[2]-1):
+				r1, g1, b1, a1 = img.get_at((x,   y))
+				r2, g2, b2, a2 = img.get_at((x+1, y))
+				r3, g3, b3, a3 = img.get_at((x,   y+1))
+				r4, g4, b4, a4 = img.get_at((x+1, y+1))
+				r = (r1 + r2 + r3 + r4) / 4
+				g = (g1 + g2 + g3 + g4) / 4
+				b = (b1 + b2 + b3 + b4) / 4
+				new_img.set_at((x, y), (r, g, b, 255))
+		
+		return new_img
+	
+	def loadData(self, players):
+		
+		player = players[self.id]
 		
 		self.x = player['x']
 		self.y = player['y']
 		
-		self.angle = player['ang']
-		
-		self.attacking = bool(player['atk'])
-		
-		self.score = player['score']
-		self.score = player['score']
-		
 		self.selected['name'] = player['selected']['name']
 		self.selected['id']   = player['selected']['id']
 		
+		self.score = player['score']
+		
+		self.angle = player['ang']
+		self.attacking = player['atk']
+			
 		self.ship_name = player['ship']['name']
 		self.ship_path = config.SHIP[self.ship_name]['path']
 		self.ship = Ship(self.ship_name)
@@ -377,12 +519,18 @@ class Player:
 		self.ship.chp = player['ship']['chp']
 		self.ship.csp = player['ship']['csp']
 		
+		self.ship.shield_unloked = player['ship']['s_unlkd']
 		self.ship.destroyed = player['ship']['dtry']
+		self.ship.spd_lvl = player['ship']['spd_lvl']
 		
 		self.img_orig = self.loadImage(self.ship_path)
 		self.img = self.img_orig
+		
+		self.rotate(self.angle)
 	
-	def updateData(self, player):
+	def updateData(self, players):
+		
+		player = players[self.id]
 		
 		if not self.x == player['x']: self.x = player['x']
 		if not self.y == player['y']: self.y = player['y']
@@ -391,11 +539,20 @@ class Player:
 			self.angle = player['ang']
 			self.rotate(self.angle)
 		
-		if not self.attacking == bool(player['atk']): self.attacking = bool(player['atk'])
+		if not self.attacking == player['atk']: self.attacking = player['atk']
 		
 		if not self.score == player['score']: self.score = player['score']
 		
 		if not self.selected == player['selected']: self.selected = player['selected']
+		
+		# Add damages received -----------------------------------------
+		if not self.under_attack:
+			for enemy_id, values in player['dmginfo'].items():
+				for dmg, pct_sp, mult in values:
+					self.under_attack = True
+					self.ship.recvDamage(dmg, pct_sp, mult)
+		else: self.under_attack = False
+		#---------------------------------------------------------------
 		
 		if not self.ship_name == player['ship']['name']:
 			self.ship_name = player['ship']['name']
@@ -408,17 +565,19 @@ class Player:
 		if not self.ship.chp == player['ship']['chp']: self.ship.chp = player['ship']['chp']
 		if not self.ship.csp == player['ship']['csp']: self.ship.csp = player['ship']['csp']
 		
-		if not self.ship.destroyed == player['ship']['dtry']: self.ship.destroyed = player['ship']['dtry']
+		if not self.ship.shield_unlocked == player['ship']['s_unlkd']: self.ship.shield_unlocked = player['ship']['s_unlkd']
+		if not self.ship.destroyed       == player['ship']['dtry']:    self.ship.destroyed = player['ship']['dtry']
+		if not self.ship.spd_lvl         == player['ship']['spd_lvl']: self.ship.spd_lvl = player['ship']['spd_lvl']
 	
 	def loadImage(self, filename, transparent=True):
 		try: image = pygame.image.load(filename)
 		except pygame.error as message: raise SystemError
 		image = image.convert()
+		# ~ image = self.resize(image, 1.2)
 		if transparent:
 			color = image.get_at((0,0))
 			image.set_colorkey(color, RLEACCEL)
 		return image
-
 
 #=======================================================================
 #=======================================================================
@@ -430,39 +589,334 @@ config = Config()
 player = Player()
 
 # Dynamic Variables
-players = {}
 enemies = {}
-
-# get users name
-while True:
- 	name = input('Please enter your name: ')
- 	if 0 < len(name) < 20:
- 		break
- 	else:
- 		print('Error, this name is not allowed (must be between 1 and 19 characters [inclusive])')
-
-# make window start in top left hand corner
-# os.environ['SDL_VIDEO_WINDOW_POS'] = '%d,%d' % (0,30)
-os.environ['SDL_VIDEO_CENTERED'] = '1'
-
-# setup pygame window
-WIN = pygame.display.set_mode((config.W,config.H))
-pygame.display.set_caption('Valkyrio')
+WIN = None
 
 #=======================================================================
 #=======================================================================
 #=======================================================================
 
-def drawWithDeep(text, xy, deep=1):
-	WIN.blit(text, (xy[0],   xy[1]))
-	if deep >= 1:
-		WIN.blit(text, (xy[0]-1, xy[1]-1))
-	if deep >= 2:
-		WIN.blit(text, (xy[0]-2, xy[1]-2))
-	if deep >= 3:
-		WIN.blit(text, (xy[0]-3, xy[1]-3))
+# Rules ------------------------------------------
+
+def radioactiveZone():
+	
+	if (player.x < 0 or config.limitX < player.x)\
+	or (player.y < 0 or config.limitX < player.y):
+		if player.ship.timeOnBorder == 0:
+			player.ship.timeOnBorder = time.perf_counter()
+		if time.perf_counter() - player.ship.timeOnBorder > 2:
+			player.ship.timeOnBorder = time.perf_counter()
+			player.ship.recvDamage(config.rad_dmg, pct_sp=0)
+	else:
+		if player.ship.timeOnBorder > 0:
+			player.ship.timeOnBorder = 0
+
+# Actions ----------------------------------------
+
+def lookAtEnemy():
+	
+	desX = (int(config.CENTER['x'])-int(player.x))	# Desplazamiento en X
+	desY = (int(config.CENTER['y'])-int(player.y))	# Desplazamiento en Y
+	
+	# Gira hacia el enemigo
+	if player.selected['id'] >= 0 and player.attacking:
+		
+		player.ship.time_hp_init = 0									# Reinicia el contador para regenracion de HP
+		
+		p_id = player.selected['id']
+		
+		try:
+			selected_pos = enemies[p_id].x+desX, enemies[p_id].y+desY
+		except:
+			player.selected['name'] = ''
+			player.selected['id']   = -1
+			player.selected['dist'] = -1
+			return
+		
+		pposX, pposY = int(config.CENTER['x']), int(config.CENTER['y'])
+		
+		dist  = round(utils.euclideanDistance((pposX,pposY), selected_pos), 2)
+		angle = -round(utils.getAngle((pposX,pposY), selected_pos), 2)
+		
+		player.selected['dist'] = dist
+		player.angle = angle
+		player.rotate(angle)
+
+def selectEnemy(event):
+	
+	if event.button == 1:
+		
+		desX = (int(config.CENTER['x'])-int(player.x))	# Desplazamiento en X
+		desY = (int(config.CENTER['y'])-int(player.y))	# Desplazamiento en Y
+		
+		posX, posY = event.pos
+		dists = []
+		for other_player_id in enemies:
+			if other_player_id == player.id: continue
+			other_player = enemies[other_player_id]
+			pposX = other_player.x+desX
+			pposY = other_player.y+desY
+			
+			dist = utils.euclideanDistance((posX, posY), (pposX,pposY))
+			
+			if dist < config.min_select_dist:
+				dists.append(( dist, other_player.name, other_player_id ))
+		
+		min_dist      = config.min_select_dist
+		min_dist_name = ''
+		min_dist_id   = 0
+		
+		data_f = 'selected:{{"name":"{}","id":{}}}'
+		data = ''
+		
+		if len(dists) > 1:
+			for dist, name, p_id in dists:
+				if dist < min_dist:
+					min_dist      = dist
+					min_dist_name = name
+					min_dist_id   = p_id
+			if not min_dist_id == player.selected['id']:
+				player.selected['name'] = min_dist_name
+				player.selected['id']   = min_dist_id
+				data = data_f.format(min_dist_name, min_dist_id)
+		elif dists:
+			if not dists[0][2] == player.selected['id']:
+				player.selected['name'] = dists[0][1]
+				player.selected['id']   = dists[0][2]
+				data = data_f.format(dists[0][1], dists[0][2])
+		
+		if data:
+			players = server.send(data)
+			return players
+	
+	if event.button == 3:
+		player.attacking = False
+		if player.selected['id'] >= 0:
+			player.selected['name'] = ''
+			player.selected['id']   = -1
+			player.selected['dist'] = -1
+			data = 'selected:{"name":"","id":-1}'
+			players = server.send(data)
+			return players
+
+def calcFrames():
+	
+	if utils.perSecond():
+		config.fps = config.curr_frame
+		config.curr_frame = 0
+	else:
+		config.curr_frame += 1
+
+def getUsername():
+	# Get users name
+	while True:
+		name = input('[+] Please enter your Username: ')
+		if config.name_min_char_len <= len(name) <= config.name_max_char_len:
+			break
+		else:
+			msg  = '[NameError] Error, this name is not allowed (must be between '
+			msg += f'{config.name_min_char_len} and {config.name_max_char_len}'
+			msg += ' characters [inclusive])'
+			print(msg)
+	return name
+
+# Events -----------------------------------------
+
+def detectEvents():
+	
+	for event in pygame.event.get():
+		
+		if event.type == pygame.TEXTINPUT: continue
+		
+		if event.type == pygame.QUIT:
+			config.run = False
+		
+		if event.type == VIDEORESIZE:
+			config.RESOLUTION = event.dict['size']
+		
+		if event.type == pygame.KEYDOWN:
+			
+			if event.key == pygame.K_ESCAPE:
+				config.run = False
+			
+			if event.key == pygame.K_LSHIFT:
+				if player.selected['id'] >= 0:
+					player.attacking = not player.attacking
+			
+			if event.key == pygame.K_j:
+				player.ship.speedLevelUP(-1)
+			if event.key == pygame.K_k:
+				player.ship.speedLevelUP()
+			if event.key == pygame.K_o:
+				config.show['name'] = not config.show['name']
+			if event.key == pygame.K_p:
+				config.show['hp-sp'] = not config.show['hp-sp']
+			if event.key == pygame.K_u:
+				player.ship.levelUpHP(1)
+			if event.key == pygame.K_i:
+				if not player.ship.shield_unlocked:
+					player.ship.shield_unlocked = True
+				player.ship.levelUpSP(1)
+			
+			if event.key == pygame.K_l:
+				player.ship.recvDamage(100, pct_sp=1, mult=1)
+		
+		# ~ if event.type == pygame.MOUSEMOTION:
+		
+		if event.type == pygame.MOUSEBUTTONDOWN:
+			
+			players = selectEnemy(event)
+			if players: updateOtherPlayers(players)
+
+def movements(deltaTime):
+		
+		keys = pygame.key.get_pressed()
+		speed = player.ship.speed
+		speed = speed * deltaTime
+		
+		movements = False
+		degrees = 0
+		x = 0
+		y = 0
+		
+		leftMove  = keys[pygame.K_LEFT]  or keys[pygame.K_a]
+		rightMove = keys[pygame.K_RIGHT] or keys[pygame.K_d]
+		upMove    = keys[pygame.K_UP]    or keys[pygame.K_w]
+		downMove  = keys[pygame.K_DOWN]  or keys[pygame.K_s]
+		leftRightMove = leftMove and rightMove
+		upDownMove    = upMove and downMove
+		player_curr_pos = int(player.x/config.posdiv), int(player.y/config.posdiv)
+		
+		if leftMove and not rightMove:
+			player.curr_pos = player_curr_pos
+			movements = True
+			if not upDownMove and (upMove or downMove):
+				if   upMove:   degrees = 90
+				elif downMove: degrees = 270
+				x -= utils.diagonal(speed)[0]
+			else:
+				degrees = 180
+				x -= speed
+		
+		if rightMove and not leftMove:
+			# ~ if player.curr_pos[0]+2 < player_curr_pos[0]:
+				# ~ x = player.curr_pos[0]
+			# ~ else:
+				player.curr_pos = player_curr_pos
+				movements = True
+				if not upDownMove and (upMove or downMove):
+					if   upMove:   degrees = 90
+					elif downMove: degrees = 270
+					x += utils.diagonal(speed)[0]
+				else:
+					degrees = 0
+					x += speed
+		
+		if upMove and not downMove:
+			player.curr_pos = player_curr_pos
+			movements = True
+			if not leftRightMove and (leftMove or rightMove):
+				if leftMove:  degrees += 45
+				if rightMove: degrees -= 45
+				y -= utils.diagonal(speed)[1]
+			else:
+				degrees = 90
+				y -= speed
+		
+		if downMove and not upMove:
+			player.curr_pos = player_curr_pos
+			movements = True
+			if not leftRightMove and (leftMove or rightMove):
+				if leftMove:  degrees -= 45
+				if rightMove: degrees += 45
+				y += utils.diagonal(speed)[1]
+			else:
+				degrees = 270
+				y += speed
+		
+		if movements:
+			player.ship.time_hp_init = 0
+			player.angle = degrees
+			player.rotate(degrees)
+			player.x += round(x, 2)
+			player.y += round(y, 2)
+		else:
+			# Recibir HP bajo sus reglas:
+			player.ship.healHP()
+		
+		# Recibir SP bajo sus reglas:
+		player.ship.healSP()
+
+# Update Data ------------------------------------
+
+def updateOtherPlayers(players):
+	
+	# Update enemies
+	ids_removed = []
+	for id_ in enemies:
+		if enemies[id_].__class__.__name__ == 'Player':
+			if id_ in players:
+				enemies[id_].updateData(players)
+			else:
+				ids_removed.append(id_)
+	
+	# Remove expired IDs
+	for id_ in ids_removed: del enemies[id_]
+	
+	# Add new enemies
+	for id_ in players:
+		if id_ == player.id: continue
+		if not id_ in enemies:
+			name = players[id_]['name']
+			other_player = Player(name, id_)
+			other_player.loadData(players)
+			enemies[id_] = other_player
+
+# Window -----------------------------------------
+
+def renderText(text, font, color, _type=''):
+	
+	if 'bold' in _type:   font.set_bold(True)
+	elif font.get_bold(): font.set_bold(False)
+	if 'italic' in _type:   font.set_italic(True)
+	elif font.get_italic(): font.set_italic(False)
+	if 'underline' in _type:   font.set_underline(True)
+	elif font.get_underline(): font.set_underline(False)
+	
+	rendered_text = font.render(text, config.antialiasing, color)
+	return rendered_text
+
+def drawAttack(des):
+	
+	# Draw Laser and damage on enemies:
+	if player.selected['id'] >= 0 and player.attacking:
+		
+		if player.selected['dist'] < player.ship.weapon.dist:
+			
+			if player.ship.weapon.perSecond():
+				
+				id_ = player.selected['id']
+				enemy = enemies[id_] 
+				dmg = player.ship.weapon.dmg
+				pct_sp = player.ship.weapon.pct_sp
+				mult = player.ship.weapon.mult
+				
+				# ~ enemy.ship.recvDamage(dmg, pct_sp)
+				
+				player.selected['dmginfo']['dmg']    = dmg
+				player.selected['dmginfo']['pct_sp'] = pct_sp
+				player.selected['dmginfo']['mult']   = mult
 
 def drawShipAndData(ship, des, name_color):
+	
+	# Draw red circle ----------------------------
+	if player.selected['id'] == ship.id:	# Circulo de selección
+		pygame.draw.circle(WIN,
+			(255,0,0), (
+				int(ship.x)+des[0],
+				int(ship.y)+des[1]
+			), config.min_select_dist, 1
+		)
 	
 	# Draw Ship ----------------------------------
 	rect = ship.img.get_rect(
@@ -475,98 +929,102 @@ def drawShipAndData(ship, des, name_color):
 	
 	desp = 50
 	
+	# Draw Name ----------------------------------
 	if config.show['name']:
-		# Draw Name ----------------------------------
 		font = config.FONT['Inc-R 18']
 		text = '-- [' + ship.name + '] --'
-		text = font.render(text, 1, name_color)
-		drawWithDeep(text, (
+		text = renderText(text, font, name_color, 'bold')
+		WIN.blit(text, (
 				int(ship.x)+des[0] - text.get_width() /2,
 				int(ship.y)+des[1] - text.get_height()/2 + desp
-			), 0
+			)
 		)
 		desp += text.get_height()-5
 	
-	if config.show['hp-sp']:
+	# Draw HP and SP -----------------------------
+	if ship.id == player.id:
 		# Draw HP ------------------------------------
 		font = config.FONT['Inc-R 14']
+		if ship.ship.chp == 0:
+			color = config.COLOR['HP Opaco']
+		else:
+			color = config.COLOR['HP']
 		text = f'{ship.ship.chp}/{ship.ship.hp}'
-		text = font.render(text, 1, config.COLOR['Verde'])
-		drawWithDeep(text, (
+		text = renderText(text, font, color, 'bold italic')
+		WIN.blit(text, (
 				int(ship.x)+des[0] - text.get_width() /2,
 				int(ship.y)+des[1] - text.get_height()/2 + desp
-			), 0
+			)
 		)
 		desp += text.get_height()-3
 		
 		# Draw SP ------------------------------------
 		font = config.FONT['Inc-R 14']
+		if not ship.ship.shield_unlocked or ship.ship.csp == 0:
+			color = config.COLOR['SP Opaco']
+		else:
+			color = config.COLOR['SP']
 		text = f'{ship.ship.csp}/{ship.ship.sp}'
-		text = font.render(text, 1, config.COLOR['Cyan'])
-		drawWithDeep(text, (
+		text = renderText(text, font, color, 'bold italic')
+		WIN.blit(text, (
 				int(ship.x)+des[0] - text.get_width() /2,
 				int(ship.y)+des[1] - text.get_height()/2 + desp
-			), 0
-		)
-	else:
-		
-		desp -= 3
-		
-		width = 100
-		height = 10
-		
-		x = int(ship.x)+des[0] - width/2
-		y = int(ship.y)+des[1] + desp
-		position = [x, y, width, height]
-		utils.roundRect(WIN, position, config.COLOR['Verde F'],
-			3, 1, (*config.COLOR['Verde S'], 50)
-		)
-		x = int(ship.x)+des[0] - width/2
-		y = int(ship.y)+des[1] + desp
-		pct_hp = ship.ship.chp / ship.ship.hp
-		position = [x, y, int(width*pct_hp), height]
-		utils.roundRect(WIN, position, config.COLOR['Verde F'],
-			3, 1, (*config.COLOR['Verde'], 200)
-		)
-		
-		desp += height + 1
-		
-		x = int(ship.x)+des[0] - width/2
-		y = int(ship.y)+des[1] + desp
-		position = [x, y, width, height]
-		utils.roundRect(WIN, position, config.COLOR['Verde F'],
-			3, 1, (*config.COLOR['Verde S'], 50)
-		)
-		x = int(ship.x)+des[0] - width/2
-		y = int(ship.y)+des[1] + desp
-		pct_sp = ship.ship.csp / ship.ship.sp
-		position = [x, y, int(width*pct_sp), height]
-		utils.roundRect(WIN, position, config.COLOR['Verde F'],
-			3, 1, (*config.COLOR['Cyan'], 200)
+			)
 		)
 	
-	# Draw red circle: -----------------------------
-	if player.selected['id'] == ship.id:
-		pygame.draw.circle(WIN,
-			(255,0,0), (
-				int(ship.x)+des[0],
-				int(ship.y)+des[1]
-			), config.SELECT_MIN_DIST, 1
-		)
+	# Draw HP an SP bars -------------------------
+	if ship.id == player.id or ship.id == player.selected['id']:
+		
+		# Draw HP an SP bars -------------------------
+		desp = 45
+		height = 6
+		width = 50
+		
+		widthHP = width+int(ship.ship.hp/int((350/2)+(350/4)))+1
+		widthSP = width+int(ship.ship.sp/int((250/2)+(250/4)))+1
+		
+		if widthHP > 200: widthHP = 200
+		if widthSP > 200: widthSP = 200
+		
+		bars = [
+			(config.COLOR['HP'], widthHP, ship.ship.chp, ship.ship.hp),
+			(config.COLOR['SP'],  widthSP, ship.ship.csp, ship.ship.sp)
+		]
+		
+		for i, (color, width, cp, p) in enumerate(bars):
+			
+			if i == 1 and not ship.ship.shield_unlocked: continue
+			
+			x = int(ship.x)+des[0] - width/2
+			y = int(ship.y)+des[1] - desp
+			position = [x, y, width, height]
+			utils.roundRect(WIN, position, config.COLOR['Verde F'],
+				2, 1, (*color, 50)
+			)
+			
+			x = int(ship.x)+des[0] - width/2
+			y = int(ship.y)+des[1] - desp
+			pct = cp / p
+			position = [x, y, int(width*pct), height]
+			utils.roundRect(WIN, position, config.COLOR['Verde F'],
+				2, 1, (*color, 200)
+			)
+			
+			desp -= height
 	
 	#===================================================================
-	
+	# Draw taken damage --------------------------
 	if ship.ship.damageRecv:
 		
 		len_dmg = len(ship.ship.damageRecv)
 		for i in range(len_dmg):
 			if ship.ship.damageRecv[i]:
 				t1 = ship.ship.damageRecv[i][1]
-				if time.perf_counter()-t1 < 1:
+				if time.perf_counter()-t1 < 1.3:
 					if i+1 < len_dmg:
 						dmg = ship.ship.damageRecv[i+1][0]
 						t2  = ship.ship.damageRecv[i+1][1]
-						if abs(t2-t1) < 1:
+						if abs(t2-t1) < 1.3:
 							ship.ship.damageRecv[i][0] += dmg
 							ship.ship.damageRecv[i+1] = None
 		
@@ -575,19 +1033,142 @@ def drawShipAndData(ship, des, name_color):
 		
 		out = -1
 		for i, (damage, t) in enumerate(ship.ship.damageRecv):
+			
 			t = time.perf_counter()-t
-			if t > 2: out = i
-			font = config.FONT['Inc-R 18']
+			if t >= 2: out = i; break
+			font = config.FONT['Inc-R 16']
+			color = config.COLOR['Rojo']
 			text = str(damage)
-			text = font.render(text, 1, config.COLOR['Rojo'])
+			text = renderText(text, font, color, 'bold italic')
 			t_h = text.get_height()
-			drawWithDeep(text, (
-					int(ship.x)+des[0] - text.get_width() /2,
-					int(ship.y)+des[1] - text.get_height()/2 -t_h -int(t*12)
+			
+			# ~ t = t**2
+			# ~ movx = int(t*20)
+			# ~ movy = int(t*(20-(20*(t/2-1))))
+			# ~ WIN.blit(text, (
+					# ~ int(ship.x)+des[0] - text.get_width() /2 + movx,
+					# ~ int(ship.y)+des[1] - text.get_height()/2 -t_h - movy
+				# ~ )
+			# ~ )
+			
+			# _dir = (1 if random.random() > .5 else -1)
+			t = t**2
+			movx = text.get_width() + t_h + int(t*10) #*_di
+			movy = int(t**2)
+			WIN.blit(text, (
+					int(ship.x)+des[0] - text.get_width() /2 + movx,
+					int(ship.y)+des[1] - text.get_height()/2 -t_h - movy
 				)
 			)
 		
 		if out >= 0: ship.ship.damageRecv.pop(out)
+
+def drawMatrix(desX, desY):
+	
+	if config.matrix_bg_fix:
+		x_r = config.xy_pixels_sqr
+		y_r = config.xy_pixels_sqr
+		linesW = int(config.W/x_r)
+		linesH = int(config.H/y_r)
+	else:
+		per = config.H/config.W
+		linesW = config.matrix_bg_sqr
+		linesH = int(linesW * per)
+		x_r = int(config.W / linesW)
+		y_r = int(config.H / linesH)
+	
+	# Lineas Horizontales
+	for x in range(linesW+2):
+		x1 = -x_r + x_r * x + desX%x_r
+		y1 = -y_r
+		x2 = -x_r + x_r * x + desX%x_r
+		y2 = config.H + y_r
+		pygame.draw.line(WIN, config.COLOR['Linea Bg'], (x1,y1), (x2,y2), 1)
+	
+	# Lineas Verticales
+	for y in range(linesH+2):
+		x1 = -x_r
+		y1 = -y_r + y_r * y + desY%y_r
+		x2 = config.W + x_r
+		y2 = -y_r + y_r * y + desY%y_r
+		pygame.draw.line(WIN, config.COLOR['Linea Bg'], (x1,y1), (x2,y2), 1)
+
+def drawOtherInfo(game_time):
+	
+	font = config.FONT['Retro 18']
+	
+	# Draw scoreboard: -------------------------------------------------
+	enemies_sorted = sorted(enemies, key=lambda x: enemies[x].score)
+	sort_enemies = list(reversed(enemies_sorted))
+	text = 'Scoreboard'
+	text = renderText(text, font, config.COLOR['Blanco'])
+	start_y = 25
+	x = config.W - text.get_width() - 10
+	WIN.blit(text, (x, 5))
+	
+	ran = min(len(enemies), 3)
+	for count, i in enumerate(sort_enemies[:ran]):
+		text = str(count+1) + '. ' + str(enemies[i].name)
+		text = renderText(text, font, config.COLOR['Blanco'])
+		WIN.blit(text, (x, start_y + count * 20))
+	
+	# Draw time: -------------------------------------------------------
+	text = 'Time: ' + utils.convertTime(game_time)
+	text = renderText(text, font, config.COLOR['Blanco'])
+	WIN.blit(text,(10, 10))
+	
+	# Draw player score: -----------------------------------------------
+	text = 'Score: ' + str(round(player.score))
+	text = renderText(text, font, config.COLOR['Blanco'])
+	WIN.blit(text,(10, 15 + text.get_height()))
+
+def drawConfigData():
+	
+	font  = config.FONT['Inc-R 14']
+	color = config.COLOR['Blanco']
+	despX = 10			# Desplazamiento en X
+	despY = 15			# Desplazamiento en Y
+	ftexts = {}
+	texts = {}
+	widest = 0
+	
+	# Generate texts -----------------------------
+	if config.show['pos']:
+		text = '({},{})'.format(
+			int(player.x/config.posdiv),
+			int(player.y/config.posdiv)
+		).ljust(11)
+		text = renderText(text, font, color)
+		texts['pos'] = text
+	if config.show['fps']:
+		text = 'FPS: '+str(config.fps)
+		text = renderText(text, font, color)
+		texts['fps'] = text
+	if config.show['speed']:
+		text = 'Speed: ' + str(player.ship.speed)
+		text = renderText(text, font, color)
+		texts['speed'] = text
+	
+	for text in texts.values():
+		if text.get_width() > widest:
+			widest = text.get_width()
+	
+	# Draw box -----------------------------------
+	ltexts = len(texts)
+	positions = [
+		despX - 5,
+		config.H - 10 - despY*ltexts - 5,
+		widest + 10,
+		despY*ltexts + 10
+	]
+	
+	utils.roundRect(WIN, positions, config.COLOR['Verde F'],
+		3, 1, (*config.COLOR['Verde S'], 50)
+	)
+	
+	# Draw texts ---------------------------------
+	for i, text in enumerate(texts.values()):
+		WIN.blit(text, (despX, config.H-text.get_height()-10 -(despY*i)))
 
 def redrawWindow(game_time):
 	
@@ -627,438 +1208,133 @@ def redrawWindow(game_time):
 	
 	drawShipAndData(player, (desX,desY), BLANCO)
 	
-	# Draw info on main layer data: ====================================
-	
-	if False:
-		
-		font = config.FONT['Retro 18']
-		
-		# Draw scoreboard: -------------------------------------------------
-		sort_enemies = list(reversed(enemies_sorted))
-		text = font.render('Scoreboard', 1, BLANCO)
-		start_y = 25
-		x = config.W - text.get_width() - 10
-		WIN.blit(text, (x, 5))
-		
-		ran = min(len(enemies), 3)
-		for count, i in enumerate(sort_enemies[:ran]):
-			text = str(count+1) + '. ' + str(enemies[i].name)
-			text = font.render(text, 1, BLANCO)
-			WIN.blit(text, (x, start_y + count * 20))
-		
-		# Draw time: -------------------------------------------------------
-		text = 'Time: ' + utils.convertTime(game_time)
-		text = font.render(text, 1, BLANCO)
-		WIN.blit(text,(10, 10))
-		
-		# Draw player score: -----------------------------------------------
-		text = 'Score: ' + str(round(player.score))
-		text = font.render(text,1,BLANCO)
-		WIN.blit(text,(10, 15 + text.get_height()))
-	
 	# Draw Game Info on main layer data: ===============================
 	
-	despX = 10			# Desplazamiento en X
-	despY = 15			# Desplazamiento en Y
-	texts = {}
-	widest = 0
-	
-	if config.show['pos']:
-		texts['pos'] = '({},{})'.format(
-			int(player.x/config.posdiv),
-			int(player.y/config.posdiv)
-		).ljust(11)
-	if config.show['fps']:
-		texts['fps'] = 'FPS: '+str(config.fps)
-	if config.show['speed']:
-		texts['speed'] = 'Speed: ' + str(player.ship.speed)
-	
-	for i, text in enumerate(texts.values()):
-		font = config.FONT['Inc-R 14']
-		text = font.render(text, 1, BLANCO)
-		if text.get_width() > widest:
-			widest = text.get_width()
-		WIN.blit(text, (despX, config.H-text.get_height()-10 -(despY*i)))
-	i+=1
-	# ~ round_rect(screen, rect_pos1, COLOR['VF'], 3, 1, (*COLOR['VS'], 50))
-	positions = [
-		despX - 5,
-		config.H - 10 - despY*i - 5,
-		widest + 10,
-		despY*i + 10
-	]
-	utils.roundRect(WIN, positions, config.COLOR['Verde F'],
-		3, 1, (*config.COLOR['Verde S'], 50)
-	)
+	drawConfigData()
 	
 	if player.ship.timeOnBorder:
 		font = config.FONT['Retro 18']
 		text = 'Radioactive Zone'
-		text = font.render(text, 1, BLANCO)
+		text = renderText(text, font, BLANCO)
 		WIN.blit(text, (config.CENTER['x']-text.get_width()/2, 30))
 	
 	if player.ship.destroyed:
 		font = config.FONT['Retro 18']
 		text = 'Destroyed'
-		text = font.render(text, 1, BLANCO)
+		text = renderText(text, font, BLANCO)
 		WIN.blit(text, (config.CENTER['x']-text.get_width()/2, 60))
+	
+	# Draw Attack: =====================================================
+	
+	drawAttack((desX,desY))
+	
+	# Draw other info on main layer data: ==============================
+	
+	drawOtherInfo(game_time)
 
-def drawMatrix(desX, desY):
+def createWindow():
 	
-	lines = config.matrix_bg
-	per = config.H/config.W
+	global WIN
 	
-	x_r = int(config.W / lines)
-	y_r = int(config.H / (lines*per))
+	# make window start in top left hand corner
+	# os.environ['SDL_VIDEO_WINDOW_POS'] = '%d,%d' % (0,30)
+	os.environ['SDL_VIDEO_CENTERED'] = '1'
 	
-	for x in range(lines+3):
-		
-		x1 = -x_r + x_r * x + desX%x_r
-		y1 = -y_r
-		
-		x2 = -x_r + x_r * x + desX%x_r
-		y2 = config.H + y_r
-		
-		pygame.draw.line(WIN, config.COLOR['Linea Bg'], (x1,y1), (x2,y2), 1)
-	
-	for y in range(int((lines*per))+3):
-		
-		x1 = -x_r
-		y1 = -y_r + y_r * y + desY%y_r
-		
-		x2 = config.W + x_r
-		y2 = -y_r + y_r * y + desY%y_r
-		
-		pygame.draw.line(WIN, config.COLOR['Linea Bg'], (x1,y1), (x2,y2), 1)
-
-def healing(chp, hp, wait_hp_init, wait_hp_max, wait_hp_pct):
-	if not chp == hp:
-		if wait_hp_init == 0:
-			wait_hp_init = time.perf_counter()
-		if time.perf_counter()-wait_hp_init >= wait_hp_max:
-			hp_add = hp * wait_hp_pct
-			if chp < hp: chp += int(hp_add)
-			if chp > hp: chp = hp
-			wait_hp_init = 0
-	return chp, wait_hp_init
-
-def movements(deltaTime):
-		
-		keys = pygame.key.get_pressed()
-		speed = player.ship.speed
-		speed = speed * deltaTime
-		
-		movements = False
-		degrees = 0
-		x = 0
-		y = 0
-		
-		leftMove  = keys[pygame.K_LEFT]  or keys[pygame.K_a]
-		rightMove = keys[pygame.K_RIGHT] or keys[pygame.K_d]
-		upMove    = keys[pygame.K_UP]    or keys[pygame.K_w]
-		downMove  = keys[pygame.K_DOWN]  or keys[pygame.K_s]
-		leftRightMove = leftMove and rightMove
-		upDownMove    = upMove and downMove
-		
-		if leftMove and not rightMove:
-			movements = True
-			if not upDownMove and (upMove or downMove):
-				if   upMove:   degrees = 90
-				elif downMove: degrees = 270
-				x -= utils.diagonal(speed)[0]
-			else:
-				degrees = 180
-				x -= speed
-		
-		if rightMove and not leftMove:
-			movements = True
-			if not upDownMove and (upMove or downMove):
-				if   upMove:   degrees = 90
-				elif downMove: degrees = 270
-				x += utils.diagonal(speed)[0]
-			else:
-				degrees = 0
-				x += speed
-		
-		if upMove and not downMove:
-			movements = True
-			if not leftRightMove and (leftMove or rightMove):
-				if leftMove:  degrees += 45
-				if rightMove: degrees -= 45
-				y -= utils.diagonal(speed)[1]
-			else:
-				degrees = 90
-				y -= speed
-		
-		if downMove and not upMove:
-			movements = True
-			if not leftRightMove and (leftMove or rightMove):
-				if leftMove:  degrees -= 45
-				if rightMove: degrees += 45
-				y += utils.diagonal(speed)[1]
-			else:
-				degrees = 270
-				y += speed
-		
-		if movements:
-			player.ship.wait_hp_init = 0
-			player.angle = degrees
-			player.rotate(degrees)
-			player.x += round(x, 2)
-			player.y += round(y, 2)
-		else:
-			# Recibir curación:
-			_chp, _wait_hp_init = healing(
-				player.ship.chp,
-				player.ship.hp,
-				player.ship.wait_hp_init,
-				player.ship.wait_hp_max,
-				player.ship.wait_hp_pct
-			)
-			player.ship.chp = _chp
-			player.ship.wait_hp_init = _wait_hp_init
-		
-		# Recibir curación:
-		_csp, _wait_sp_init = healing(
-			player.ship.csp,
-			player.ship.sp,
-			player.ship.wait_sp_init,
-			player.ship.wait_sp_max,
-			player.ship.wait_sp_pct
-		)
-		player.ship.csp = _csp
-		player.ship.wait_sp_init = _wait_sp_init
-
-def selectObj(event):
-	
-	if event.button == 1:
-		
-		desX = (int(config.CENTER['x'])-int(player.x))	# Desplazamiento en X
-		desY = (int(config.CENTER['y'])-int(player.y))	# Desplazamiento en Y
-		
-		posX, posY = event.pos
-		dists = []
-		for other_player_id in enemies:
-			if other_player_id == player.id: continue
-			other_player = enemies[other_player_id]
-			pposX = other_player.x+desX
-			pposY = other_player.y+desY
-			
-			dist = utils.euclideanDistance((posX, posY), (pposX,pposY))
-			
-			if dist < config.SELECT_MIN_DIST:
-				dists.append(( dist, other_player.name, other_player_id ))
-		
-		min_dist      = config.SELECT_MIN_DIST
-		min_dist_name = ''
-		min_dist_id   = 0
-		
-		data_f = 'selected:{{"name":"{}","id":{}}}'
-		data = ''
-		
-		if len(dists) > 1:
-			for dist, name, p_id in dists:
-				if dist < min_dist:
-					min_dist      = dist
-					min_dist_name = name
-					min_dist_id   = p_id
-			if not min_dist_id == player.selected['id']:
-				player.selected['name'] = min_dist_name
-				player.selected['id']   = min_dist_id
-				data = data_f.format(min_dist_name, min_dist_id)
-		elif dists:
-			if not dists[0][2] == player.selected['id']:
-				player.selected['name'] = dists[0][1]
-				player.selected['id']   = dists[0][2]
-				data = data_f.format(dists[0][1], dists[0][2])
-		
-		if data:
-			players = server.send(data)
-			return players
-	
-	if event.button == 3:
-		player.attacking = False
-		if player.selected['id'] >= 0:
-			player.selected['name'] = ''
-			player.selected['id']   = -1
-			player.selected['dist'] = -1
-			data = 'selected:{"name":"","id":-1}'
-			players = server.send(data)
-			return players
-
-def detectEvents():
-	
-	for event in pygame.event.get():
-		
-		if event.type == pygame.QUIT:
-			config.run = False
-		
-		if event.type == pygame.KEYDOWN:
-			
-			if event.key == pygame.K_ESCAPE:
-				config.run = False
-			
-			if event.key == pygame.K_LSHIFT:
-				if player.selected['id'] >= 0:
-					player.attacking = not player.attacking
-			
-			if event.key == pygame.K_j:
-				player.ship.speed -= 10
-			if event.key == pygame.K_k:
-				player.ship.speed += 10
-			if event.key == pygame.K_o:
-				config.show['name'] = not config.show['name']
-			if event.key == pygame.K_p:
-				config.show['hp-sp'] = not config.show['hp-sp']
-			
-			if event.key == pygame.K_l:
-				player.ship.recvDamage(10, pct_sp=1, mult=5)
-		
-		# ~ if event.type == pygame.MOUSEMOTION:
-		
-		if event.type == pygame.MOUSEBUTTONDOWN:
-			
-			players_ = selectObj(event)
-			if players_: updateOtherPlayers(players_)
-
-def updateOtherPlayers(players):
-	
-	# Update enemies
-	ids_removed = []
-	for id_ in enemies:
-		if enemies[id_].__class__.__name__ == 'Player':
-			if id_ in players:
-				enemies[id_].updateData(players[id_])
-			else:
-				ids_removed.append(id_)
-	
-	# Remove expired IDs
-	for id_ in ids_removed: del enemies[id_]
-	
-	# Add new enemies
-	for id_ in players:
-		if id_ == player.id: continue
-		if not id_ in enemies:
-			name = players[id_]['name']
-			other_player = Player(name, id_)
-			other_player.loadData(players[id_])
-			enemies[id_] = other_player
-
-def rotateToEnemy():
-	
-	desX = (int(config.CENTER['x'])-int(player.x))	# Desplazamiento en X
-	desY = (int(config.CENTER['y'])-int(player.y))	# Desplazamiento en Y
-	
-	# Gira hacia el enemigo
-	if player.selected['id'] >= 0 and player.attacking:
-		
-		p_id = player.selected['id']
-		
-		try:
-			selected_pos = enemies[p_id].x+desX, enemies[p_id].y+desY
-		except:
-			player.selected['name'] = ''
-			player.selected['id']   = -1
-			player.selected['dist'] = -1
-			return
-		
-		pposX, pposY = int(config.CENTER['x']), int(config.CENTER['y'])
-		
-		dist  = round(utils.euclideanDistance((pposX,pposY), selected_pos), 2)
-		angle = -round(utils.getAngle((pposX,pposY), selected_pos), 2)
-		
-		player.selected['dist'] = dist
-		player.angle = angle
-		player.rotate(angle)
-	
-	# ~ selected_by_enemies = []
-	# ~ for id_ in enemies:
-		# ~ angle = enemies[id_].angle
-		# ~ enemies[id_].rotate(angle)
-		# ~ selected_name = enemies[id_].selected['name']
-		# ~ if selected_name == player.name:
-			# ~ selected_by_enemies.append(id_)
-	
-	# ~ if selected_by_enemies:
-		
-		# ~ for enemy_id in selected_by_enemies:
-			# ~ px, py = config.CENTER['x'],       config.CENTER['y']
-			# ~ x,  y  = enemies[enemy_id].x+desX, enemies[enemy_id].y+desY
-			
-			# ~ dist  = round(utils.euclideanDistance((x,y), (px,py)), 2)
-			# ~ angle = -round(utils.getAngle((x,y), (px,py)), 2)
-			
-			# ~ enemies[enemy_id].selected['dist'] = dist
-			# ~ enemies[enemy_id].angle = angle
-			# ~ enemies[enemy_id].rotate(angle)
-	''
-
-def borderRules():
-	
-	if (player.x < 0 or config.limitX < player.x)\
-	or (player.y < 0 or config.limitX < player.y):
-		if player.ship.timeOnBorder == 0:
-			player.ship.timeOnBorder = time.perf_counter()
-		if time.perf_counter() - player.ship.timeOnBorder > 2:
-			player.ship.timeOnBorder = time.perf_counter()
-			player.ship.recvDamage(config.radDmg, pct_sp=0)
-	else:
-		if player.ship.timeOnBorder > 0:
-			player.ship.timeOnBorder = 0
+	# setup pygame window
+	WIN = pygame.display.set_mode((config.W,config.H), HWSURFACE | DOUBLEBUF | RESIZABLE)
+	pygame.display.set_caption('Valkyrio Online')
 
 #=======================================================================
 
 def main():
 	
-	global players
-	
 	config.run = True
 	deltaTime = 1					# Delta Time
-	frames = 0						# Number of Frames
 	clock = pygame.time.Clock()
 	
-	# start by connecting to the network
-	player.name = name
-	player.id = server.connect(player.name)
-	players, game_time = server.send('get')
-	player.loadData(players[player.id])
+	# start by connecting to the network ---------
+	while True:
+		player.name = getUsername()
+		try: player.id = server.connect(player.name); break
+		except ConnectionRefusedError as e:
+			print(f'[ConnectionRefusedError]: {e}')
+	
+	#---------------------------------------------
+	
+	createWindow()
+	
+	players = server.send('get')
+	player.loadData(players)
+	
+	#---------------------------------------------
 	
 	while config.run:
 		
-		players, game_time = server.send(player.data)				# Envia datos al servidor y recibe la información de los otros jugadores
+		players, game_time = server.send(player.data)		# Envia datos al servidor y recibe la información de los otros jugadores
 		
+		# Add damages received
+		for enemy_id, values in players[player.id]['dmginfo'].items():
+			for dmg, pct_sp, mult in values:
+				player.ship.recvDamage(dmg, pct_sp, mult)
+		
+		# Update Data:
 		updateOtherPlayers(players)							# Actualiza los datos de los enemigos
+		
+		# Events:
 		movements(deltaTime)								# Detecta los movimientos direccionales
-		borderRules()										# Reglas para la zona radioactiva
 		detectEvents()										# Detecta los eventos de Mouse y Teclado
-		rotateToEnemy()										# Si el enemigo esta seleccionado o el jugador es seleccionado, las naves giran apuntandose.
+		
+		# Actions:
+		lookAtEnemy()										# Si el enemigo esta seleccionado o el jugador es seleccionado, las naves giran apuntandose.
+		radioactiveZone()									# Reglas para la zona radioactiva
+		calcFrames()										# Calcula la cantidad de fotogramas por segundo.
+		
+		# Draw Window:
 		redrawWindow(game_time)								# Redibuja todo (1 Fotograma)
+		
+		# Update Window Data
 		pygame.display.update()								# Actualiza la ventana con todos los cambios
 		
+		# Delta Time:
 		deltaTime = clock.tick(config.MFPS) / config.dtdiv	# Hace una breve pausa para respetar los Fotogramas por segundo y devuelve el "Delta Time"/1000
-		
-		if utils.perSecond():
-			config.fps = frames
-			frames = 0
-			# ~ for _, e in enemies.items(): print(e, end=' ')
-			# ~ print()
-		else:
-			frames += 1
 	
 	server.disconnect()
 	pygame.quit()
 	quit()
 
-
+#=======================================================================
 
 # Ejecuta esto despues de terminar la ejecución del programa.
 @atexit.register
 def close():
 	time.sleep(1)
 
-
+#=======================================================================
 
 # start game
 main()
 
+#=======================================================================
+# +Añadido: 24/08/2021
+# Código reorganizado. 
+# Apuntar o dejar de apuntar con Shift.
+# No mostrar informacion de cantidad de vida de enemigos.
+# Mostrar solo barras de vida y escudo al apuntar a los enemigos.
+# Mejorada mecanica de recuperacion de vida y escudo.
+# Agregadas funcion para imagenes resize y antialiasing
+# Agregado resize de ventana y ajuste automatico de posiciones en pantalla
+# +Añadido: 25/08/2021
+# Configuradas las barras de HP y SP, Aumentan de tamaño conforme el aumento
+#  de niveles con estado inicial en 50 píxeles en nivel 1 y a un máximo para
+#  ambos de 200 píxeles en el nivel 112.
+# Agregadas tonalidades opacas en textos de HP o SP al llegar a 0.
+# Agregada animación de daño recibido en todas las naves.
+# Configurada matriz de fondo con 2 tipos de seleccion de vista,
+#  ajustada (Por defecto) o Variable.
+# +Añadido: 26/08/2021
+# Agregado daño causado en enemigos (reflejado en tiempo real).
+# Agregado el mostrar la barra de SP al desbloquerla otros jugadores
+# Agregada funcion para el aumento de niveles de velocidad
+# Agregado que la velocidad se adaptade a la velocidad base al subir de nivel
+# Agregado un minimo de 1 caracter hasta 24 caracteres para los nombres.
 

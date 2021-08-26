@@ -14,14 +14,13 @@ S.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 # Set constants
 PORT = 57575
-# ~ MapW, MapH = 1600, 1600
 HOST_NAME = socket.gethostname()
 SERVER_IP = socket.gethostbyname(HOST_NAME)
 
 # try to connect to server
 try:
     S.bind((SERVER_IP, PORT))
-    # ~ S.bind(('192.168.1.72', PORT))
+    # ~ S.bind(('127.0.0.1', PORT))
 except socket.error as e:
     print(str(e))
     print('[SERVER] Server could not start')
@@ -39,7 +38,7 @@ _id = 0
 start = False
 start_time = 0
 game_time = 'Starting Soon'
-# ~ colors = [(128,200,100),(128,200,200),(128,100,100),(128,100,200),(200,100,100),(200,200,200),(200,200,100),(200,100,200)]
+kbyte = 1024
 
 # FUNCTIONS ============================================================
 
@@ -50,34 +49,32 @@ def threaded_client(conn, _id):
 	FPS = 1/240
 	current_id = _id
 	
-	data = conn.recv(16)
+	data = conn.recv(24)
 	name = data.decode('utf-8')
 	print(f"[LOG] '{name}' connected to the server.")
 	
 	players[current_id] = {
-		'x': random.randrange(200,240),
-		'y': random.randrange(200,240),
-		'score': 0,		# Score
-		'name': name,	# Username
-		'vel': 50,		# Speed
-		'ang': 0,		# Angle
-		'atk': False,	# Attacking
+		'x': random.randrange(1200,1600),
+		'y': random.randrange(1200,1600),
+		'name': name,				# Username
+		'score': 0,					# Score
+		'ang': 0,					# Angle
+		'atk': False,				# Attacking
 		'ship': {
 			'name': 'Prometheus',	# Ship Name
 			'hp': 350,				# Health Points
-			'sp': 250,				# Shield Points
-			'chp': 350,				# Health Points
-			'csp': 250,				# Current Shield Points
+			'sp': 0,				# Shield Points
+			'chp': 350,				# Current Health Points
+			'csp': 0,				# Current Shield Points
+			's_unlkd': False,		# Shield Unlocked
 			'dtry': False,			# Destroyed
+			'spd_lvl': 0			# Speed
 		},
 		'selected': {
 			'name': '',		# Selected Username
-			'id': -1,		# Selected ID user
-			# ~ 'x': 0,
-			# ~ 'y': 0,
-			# ~ 'angle': 0,
-			# ~ 'dist': 0
-		}
+			'id':   -1,		# Selected ID user
+		},
+		'dmginfo': {}
 	}
 	
 	conn.send(str.encode(str(current_id)))
@@ -87,7 +84,7 @@ def threaded_client(conn, _id):
 		try:
 			game_time = int(time.perf_counter()-start_time)
 			
-			data = conn.recv(1024)
+			data = conn.recv(kbyte)
 			
 			if not data: break
 			
@@ -98,16 +95,35 @@ def threaded_client(conn, _id):
 				
 				data = data[len('data:'):]
 				data = json.loads(data)
-				players[current_id]['x'] = data['x']
-				players[current_id]['y'] = data['y']
-				players[current_id]['ship']['chp'] = data['chp']
-				players[current_id]['ship']['csp'] = data['csp']
-				players[current_id]['ship']['dtry'] = data['dtry']
+				players[current_id]['x']   = data['x']
+				players[current_id]['y']   = data['y']
 				players[current_id]['ang'] = data['ang']
-				players[current_id]['atk'] = data['atk']
+				players[current_id]['atk'] = data['atk'] == 'True'
+				players[current_id]['ship']['hp']      = data['shipdata']['hp']
+				players[current_id]['ship']['sp']      = data['shipdata']['sp']
+				players[current_id]['ship']['chp']     = data['shipdata']['chp']
+				players[current_id]['ship']['csp']     = data['shipdata']['csp']
+				players[current_id]['ship']['s_unlkd'] = data['shipdata']['s_unlkd'] == 'True'
+				players[current_id]['ship']['dtry']    = data['shipdata']['dtry']
+				players[current_id]['ship']['spd_lvl'] = data['shipdata']['spd_lvl']
+				
+				if data['dmginfo']['dmg'] > 0 and data['dmginfo']['id'] >= 0:
+					
+					dmginfo = players[data['dmginfo']['id']]['dmginfo']
+					
+					if not dmginfo.get(current_id):
+						dmginfo[current_id] = []
+					
+					dmginfo[current_id].append([
+						data['dmginfo']['dmg'],
+						data['dmginfo']['pct_sp'],
+						data['dmginfo']['mult']
+					])
 				
 				send_data = pickle.dumps((players, game_time))
-			
+				
+				players[current_id]['dmginfo'] = {}
+				
 			elif data.startswith('id'):
 				
 				send_data = str.encode(str(current_id))
@@ -133,13 +149,18 @@ def threaded_client(conn, _id):
 					players[current_id]['selected']['id'] = -1
 				
 				send_data = pickle.dumps(players)
-			
+				
+			elif data == 'get':
+				
+				send_data = pickle.dumps(players)
+				
 			else: send_data = pickle.dumps((players, game_time))
 			
 			conn.send(send_data)
 		
 		except Exception as e:
-			print(e, 'Error')
+			if not str(e).startswith('[WinError 10054]'):
+				print(e, 'Error')
 			break
 		
 		time.sleep(FPS)
