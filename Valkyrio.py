@@ -3,7 +3,7 @@ import contextlib
 with contextlib.redirect_stdout(None):
 	import pygame
 from pygame.locals import *
-pygame.font.init()
+# ~ pygame.font.init()
 from Client import Network
 import atexit
 import random
@@ -15,18 +15,17 @@ import os
 
 __project__ = 'Valkyrio'
 __author__  = 'LawlietJH'
-__version__ = '0.0.3 (Alfa)'
+__version__ = '0.0.4 (Alfa)'
 
 __license__ = 'MIT'
 __status__  = 'Development'
-__framework__    = 'pygame'
-__description__  = 'Juego 2D online con pygame inspirado en los juegos clasicos de destruir naves.'
-__version_date__ = '26/08/2021'
+__framework__    = 'Pygame'
+__description__  = 'Juego 2D online con pygame inspirado en los juegos clásicos de destruir naves.'
+__version_date__ = '28/08/2021'
 
 #=======================================================================
 #=======================================================================
 #=======================================================================
-
 
 class Utils:
 	
@@ -113,6 +112,8 @@ class Config:
 		
 		# Cons: --------------------------------------------------------
 		
+		self.specs = ''
+		
 		self.COLOR = { # https://htmlcolorcodes.com/es/
 			'Negro':        (  0,  0,  0),
 			'Blanco':       (255,255,255),
@@ -155,23 +156,38 @@ class Config:
 			'Comic 18': pygame.font.SysFont('comicsans', 18)
 		}	# Diccionario de Fuentes.
 		
+		self.MUSIC = {
+			'JNATHYN - Genesis': 'sound/music/JNATHYN - Genesis.mp3'
+		}
+		
+		# Sound Effects
+		self.SFX = {}
+		
+		# Music
+		self.music = pygame.mixer.music
+		self.sound = pygame.mixer.Sound
+		
 		# Configs: -----------------------------------------------------
 		
 		self.show = {
-			'name': True,
-			'speed': True,
-			'fps': True,
-			'pos': True,
-			'hp-sp': True
+			'name':      True,		# Show the name of the player and the name of the enemies
+			'speed':     True,		# Show player speed 
+			'fps':       True,		# Show fps
+			'pos':       True,		# Show player coordinates
+			'hp-sp':     True,		# Show player's HP and SP numbers
+			'weapon':    True,		# Displays the name and level of the weapon
+			'creds_exp': True,		# Show accumulated damage
+			'acc_dmg':   False		# Show accumulated damage
 		}
 		
 		self.WEAPON = {
 			'Laser': {
 				'path': 'img/weapons/laser.png',
-				'dmg': 100,
-				'dist': 400,
-				'pct_sp': .7,
-				'mult': 1
+				'dmg': 100,			# Base damage
+				'inc': 1,			# Damage increment per level 
+				'dist': 400,		# Minimum distance to attack enemies
+				'pct_sp': .7,		# Damage percentage to SP
+				'mult': 1			# Damage multiplier
 			}
 		}
 		
@@ -187,17 +203,35 @@ class Config:
 			}
 		}
 		
+		self.STRANGERS = {
+			'Iken': {
+				'path':   'img/Prometheus.png',
+				'weapon': 'Laser',
+				'speed':   int(.5 * self.speedmul),
+				'spd_lvl': 0,
+				'hp':      15,
+				'sp':      25
+			}
+		}
+		
+		self.MAP = {
+			'Zwem':   { 'x': 200, 'y': 200 },
+			'Karont': { 'x': 300, 'y': 300 },
+			'Arkont': { 'x': 400, 'y': 400 }
+		}
+		
 		# Username settings
 		self.name_min_char_len = 1						# Minimum Character Length
 		self.name_max_char_len = 24						# Maximum Character Length
 		
 		# Data settings
-		self.BASE_SPEED = 1  * self.speedmul			# Base Speed of Ships
-		self.MAX_SPEED  = 2  * self.speedmul			# Max Speed of Ships
+		self.BASE_SPEED = 1 * self.speedmul				# Base Speed of Ships
+		self.MAX_SPEED  = 2 * self.speedmul				# Max Speed of Ships
 		self.dtdiv = 10 * self.speedmul					# Detla Time Divide
 		self.posdiv = 20								# Divide the actual position of pixels X and Y to generate coordinates for the map
 		self.rad_dmg = 500								# Radioactive Damage 
 		self.min_select_dist = 32						# Minimum target selection distance (on pixels)
+		self.acc_dmg = False							#
 		
 		# Counters
 		self.curr_frame = 0								# Current Frame
@@ -212,10 +246,14 @@ class Config:
 		self.RESOLUTION = (600, 450)					# Resolution
 		self.antialiasing = True						# Anti-aliasing is a method by which you can remove irregularities that appear in objects in PC games.
 		self.run = False								# Game Run
-		self.limitX = 10000								# Limit on X Coord
-		self.limitY = 10000								# Limit on Y Coord
 		self.MFPS = 120									# Max Frames per Second
 		self.fps = 60									# Number of Frames per Second
+		
+		# Music settings
+		self.music_vol = 20							# Music volume
+		
+		# Map settings
+		self.map_name = 'Zwem'
 		
 		# Objects that are off the screen disappear
 		self.limit_obj_dist = int(utils.euclideanDistance((
@@ -234,6 +272,22 @@ class Config:
 	@property
 	def H(self):
 		return self.RESOLUTION[1]
+	
+	@property
+	def map_limits(self, map_name=None):	# Actual map coordinates in number of pixels
+		
+		limits = self.MAP['Zwem']
+		
+		if not map_name: map_name = self.map_name
+		
+		if self.MAP.get(map_name):
+			
+			limits = {
+				'x': self.MAP[map_name]['x'] * self.posdiv,
+				'y': self.MAP[map_name]['y'] * self.posdiv
+			}
+		
+		return limits
 
 
 class Weapon:
@@ -242,10 +296,16 @@ class Weapon:
 		self.name = name
 		self.path = config.WEAPON[name]
 		self.dmg  = config.WEAPON[name]['dmg']
+		self.inc  = config.WEAPON[name]['inc']
 		self.dist = config.WEAPON[name]['dist']
 		self.pct_sp = config.WEAPON[name]['pct_sp']
 		self.mult = config.WEAPON[name]['mult']
+		self.lvl  = 0
 		self.init_time = 0
+	
+	def levelUpDmg(self, lvl=1):
+		self.lvl += lvl
+		self.dmg += lvl*self.inc
 	
 	def perSecond(self, t=1):
 		if time.perf_counter() - self.init_time >= t:
@@ -265,8 +325,8 @@ class Ship:
 		self.spd_lvl = self.base['spd_lvl']
 		
 		# Health
-		self.hp  = self.base['hp']		# Health points
-		self.chp = self.hp				# Current Health Points
+		self.hp  = 0					# Health points
+		self.chp = 0					# Current Health Points
 		self.lhp = 1					# Level Health Points
 		self.pct_hp = .3				# Health Damage Percentage
 		self.heal_hp = False
@@ -274,8 +334,8 @@ class Ship:
 		
 		# Shield
 		self.shield_unlocked = False
-		self.sp  = self.base['sp']		# Shield points
-		self.csp = self.sp				# Current Shield Points
+		self.sp  = 0					# Shield points
+		self.csp = 0					# Current Shield Points
 		self.lsp = 0					# Level Shield Points
 		self.pct_sp = .7				# Shield Damage Percentage
 		self.heal_sp = False
@@ -283,7 +343,6 @@ class Ship:
 		
 		self.timeOnBorder = 0
 		
-		# ~ self.damageRecv = [[50, time.perf_counter()],[150, time.perf_counter()]]
 		self.damageRecv = []
 		self.healthRecv = []
 	
@@ -312,34 +371,36 @@ class Ship:
 	
 	def recvDamage(self, damage, pct_sp=None, mult=1, draw=True):			# Registra el daño recibido para mostrarlo
 		
+		if self.destroyed: return
+		
 		self.heal_hp = False
 		self.heal_sp = False
 		self.time_hp_init = 0
 		self.time_sp_init = 0
 		
-		if player.ship.chp == 0:
-			self.destroyed = True
-			return
-		
 		if pct_sp == None:
-			dhp = damage * self.pct_hp * mult
-			dsp = damage * self.pct_sp * mult
+			dhp = int(damage * self.pct_hp * mult)
+			dsp = int(damage * self.pct_sp * mult)
 		else:
-			dhp = damage * (1-pct_sp) * mult
-			dsp = damage *    pct_sp  * mult
+			dhp = int(damage * (1-pct_sp) * mult)
+			dsp = int(damage *    pct_sp  * mult)
+		
+		while dhp+dsp < int(damage*mult): dsp += 1
 		
 		if self.csp > 0:
 			self.csp = int(self.csp - dsp)
 			if self.csp < 0:
-				self.chp += self.csp
+				self.chp = int(self.chp + self.csp)
 				self.csp = 0
 		else: self.chp = int(self.chp - dsp)
 		if self.chp > 0: self.chp = int(self.chp - dhp)
 		if self.chp < 0: self.chp = 0
 		
+		if self.chp == 0: self.destroyed = True
+		
 		if draw: self.damageRecv.append([damage*mult, time.perf_counter()])
 	
-	def healHP(self, pct=10, sec_init=3, sec=3):
+	def healHP(self, pct=10, sec_init=6, sec=3):
 		if not self.chp >= self.hp:
 			if self.heal_hp:
 				if self.time_hp_init == 0:
@@ -383,7 +444,8 @@ class Player:
 		self.img_orig = None
 		self.img = None
 		
-		self.score = None
+		self.creds = 0
+		self.exp = 0
 		self.id = id_
 		self.x = 0
 		self.y = 0
@@ -400,6 +462,7 @@ class Player:
 				'dmg':     0,		# Damage caused by the player.
 				'pct_sp': .7,		# Damage distributed in percentage of SP and HP.
 				'mult':    1,		# Damage multiplier.
+				'time':    0
 			}
 		}
 		
@@ -418,46 +481,61 @@ class Player:
 		data_f  = 'data:{{'
 		data_f +=   '"x":{},'
 		data_f +=   '"y":{},'
+		data_f +=   '"creds":{},'
+		data_f +=   '"exp":{},'
 		data_f +=   '"ang":{},'
 		data_f +=   '"atk":"{}",'
 		data_f +=   '"shipdata":{{'
-		data_f +=     '"hp":{},'
-		data_f +=     '"sp":{},'
+		data_f +=     '"name":"{}",'
+		data_f +=     '"lhp":{},'
+		data_f +=     '"lsp":{},'
 		data_f +=     '"chp":{},'
 		data_f +=     '"csp":{},'
 		data_f +=     '"s_unlkd":"{}",'
 		data_f +=     '"dtry":"{}",'
-		data_f +=     '"spd_lvl":{}'
+		data_f +=     '"spd_lvl":{},'
+		data_f +=     '"weapon":{{'
+		data_f +=       '"name":"{}",'
+		data_f +=       '"lvl":{}'
+		data_f +=     '}}'
 		data_f +=   '}},'
 		data_f +=   '"dmginfo":{{'
 		data_f +=     '"id":{},'
 		data_f +=     '"dmg":{},'
 		data_f +=     '"pct_sp":{},'
-		data_f +=     '"mult":{}'
+		data_f +=     '"mult":{},'
+		data_f +=     '"time":{}'
 		data_f +=   '}}'
 		data_f += '}}'
 		
 		data = data_f.format(
 			round(self.x, 2),
 			round(self.y, 2),
+			self.creds,
+			self.exp,
 			self.angle,
 			self.attacking,
-			self.ship.hp,
-			self.ship.sp,
+			self.ship.name,
+			self.ship.lhp,
+			self.ship.lsp,
 			self.ship.chp,
 			self.ship.csp,
 			self.ship.shield_unlocked,
 			self.ship.destroyed,
 			self.ship.spd_lvl,
+			self.ship.weapon.name,
+			self.ship.weapon.lvl,
 			self.selected['id'],
 			self.selected['dmginfo']['dmg'],
 			self.selected['dmginfo']['pct_sp'],
-			self.selected['dmginfo']['mult']
+			self.selected['dmginfo']['mult'],
+			self.selected['dmginfo']['time']
 		)
 		
 		self.selected['dmginfo']['dmg']    = 0
 		self.selected['dmginfo']['pct_sp'] = 0
 		self.selected['dmginfo']['mult']   = 0
+		self.selected['dmginfo']['time']   = 0
 		
 		return data
 	
@@ -502,7 +580,8 @@ class Player:
 		self.selected['name'] = player['selected']['name']
 		self.selected['id']   = player['selected']['id']
 		
-		self.score = player['score']
+		self.creds = player['creds']
+		self.exp = player['exp']
 		
 		self.angle = player['ang']
 		self.attacking = player['atk']
@@ -511,21 +590,33 @@ class Player:
 		self.ship_path = config.SHIP[self.ship_name]['path']
 		self.ship = Ship(self.ship_name)
 		
-		if not player['ship']['hp'] == self.ship.hp:
-			self.ship.hp = player['ship']['hp']
-		if not player['ship']['sp'] == self.ship.sp:
-			self.ship.sp = player['ship']['sp']
+		self.ship.hp = 0
+		self.ship.sp = 0
+		self.ship.lhp = 0
+		self.ship.lsp = 0
+		self.ship.levelUpHP(player['ship']['lhp'])
+		self.ship.shield_unlocked = player['ship']['s_unlkd']
+		self.ship.levelUpSP(player['ship']['lsp'])
 		
-		self.ship.chp = player['ship']['chp']
-		self.ship.csp = player['ship']['csp']
+		if not player['ship']['chp'] == 0 \
+		and player['ship']['chp'] <= self.ship.lhp:
+			self.ship.chp = player['ship']['chp']
+		else:
+			self.ship.chp = self.ship.hp
 		
-		self.ship.shield_unloked = player['ship']['s_unlkd']
+		if player['ship']['csp'] <= self.ship.lsp:
+			self.ship.csp = player['ship']['csp']
+		else:
+			self.ship.csp = self.ship.sp
+		
 		self.ship.destroyed = player['ship']['dtry']
 		self.ship.spd_lvl = player['ship']['spd_lvl']
 		
+		self.ship.weapon = Weapon(player['ship']['weapon']['name'])
+		self.ship.weapon.levelUpDmg(player['ship']['weapon']['lvl'])
+		
 		self.img_orig = self.loadImage(self.ship_path)
 		self.img = self.img_orig
-		
 		self.rotate(self.angle)
 	
 	def updateData(self, players):
@@ -541,14 +632,15 @@ class Player:
 		
 		if not self.attacking == player['atk']: self.attacking = player['atk']
 		
-		if not self.score == player['score']: self.score = player['score']
+		if not self.creds == player['creds']: self.creds = player['creds']
+		if not self.exp == player['exp']: self.exp = player['exp']
 		
 		if not self.selected == player['selected']: self.selected = player['selected']
 		
 		# Add damages received -----------------------------------------
 		if not self.under_attack:
 			for enemy_id, values in player['dmginfo'].items():
-				for dmg, pct_sp, mult in values:
+				for dmg, pct_sp, mult, t in values:
 					self.under_attack = True
 					self.ship.recvDamage(dmg, pct_sp, mult)
 		else: self.under_attack = False
@@ -559,15 +651,48 @@ class Player:
 			self.ship_path = config.SHIP[self.ship_name]['path']
 			self.ship = Ship(self.ship_name)
 		
-		if not player['ship']['hp'] == self.ship.hp: self.ship.hp = player['ship']['hp']
-		if not player['ship']['sp'] == self.ship.sp: self.ship.sp = player['ship']['sp']
+		# ~ if not player['ship']['hp'] == self.ship.hp:
+			# ~ self.ship.hp = player['ship']['hp']
+		# ~ if not player['ship']['sp'] == self.ship.sp:
+			# ~ self.ship.sp = player['ship']['sp']
+		
+		# HP and SP ----------------------------------------
+		if not self.ship.lhp == player['ship']['lhp']:
+			self.ship.hp = 0
+			self.ship.lhp = 0
+			self.ship.levelUpHP(player['ship']['lhp'])
+		
+		if not self.ship.shield_unlocked == player['ship']['s_unlkd']: self.ship.shield_unlocked = player['ship']['s_unlkd']
+		
+		if not self.ship.lsp == player['ship']['lsp']:
+			self.ship.sp = 0
+			self.ship.lsp = 0
+			self.ship.levelUpSP(player['ship']['lsp'])
+		
+		# ~ if player['ship']['chp'] <= self.ship.chp:
+			# ~ self.ship.chp = player['ship']['chp']
+		# ~ else:
+			# ~ self.ship.chp = self.ship.hp
+		
+		# ~ if player['ship']['csp'] <= self.ship.csp:
+			# ~ self.ship.csp = player['ship']['csp']
+		# ~ else:
+			# ~ self.ship.csp = self.ship.sp
 		
 		if not self.ship.chp == player['ship']['chp']: self.ship.chp = player['ship']['chp']
 		if not self.ship.csp == player['ship']['csp']: self.ship.csp = player['ship']['csp']
+		#---------------------------------------------------
 		
-		if not self.ship.shield_unlocked == player['ship']['s_unlkd']: self.ship.shield_unlocked = player['ship']['s_unlkd']
-		if not self.ship.destroyed       == player['ship']['dtry']:    self.ship.destroyed = player['ship']['dtry']
-		if not self.ship.spd_lvl         == player['ship']['spd_lvl']: self.ship.spd_lvl = player['ship']['spd_lvl']
+		if not self.ship.destroyed == player['ship']['dtry']:    self.ship.destroyed = player['ship']['dtry']
+		if not self.ship.spd_lvl   == player['ship']['spd_lvl']: self.ship.spd_lvl = player['ship']['spd_lvl']
+		
+		# ~ if not self.ship.weapon == player['ship']['weapon']['name']:
+			# ~ self.ship.weapon = Weapon(player['ship']['weapon']['name'])
+			# ~ self.ship.weapon.levelUpDmg(player['ship']['weapon']['lvl'])
+		# ~ else:
+			# ~ if not self.ship.weapon.lvl == player['ship']['weapon']['lvl']:
+				# ~ lvl = self.ship.weapon.lvl - player['ship']['weapon']['lvl']
+				# ~ self.ship.weapon.levelUpDmg(lvl)
 	
 	def loadImage(self, filename, transparent=True):
 		try: image = pygame.image.load(filename)
@@ -583,6 +708,10 @@ class Player:
 #=======================================================================
 #=======================================================================
 
+pygame.init()
+pygame.mixer.init()
+pygame.font.init()
+
 server = Network()
 utils  = Utils()
 config = Config()
@@ -590,6 +719,7 @@ player = Player()
 
 # Dynamic Variables
 enemies = {}
+game_time = None
 WIN = None
 
 #=======================================================================
@@ -600,8 +730,8 @@ WIN = None
 
 def radioactiveZone():
 	
-	if (player.x < 0 or config.limitX < player.x)\
-	or (player.y < 0 or config.limitX < player.y):
+	if (player.x < 0 or config.map_limits['x'] < player.x)\
+	or (player.y < 0 or config.map_limits['y'] < player.y):
 		if player.ship.timeOnBorder == 0:
 			player.ship.timeOnBorder = time.perf_counter()
 		if time.perf_counter() - player.ship.timeOnBorder > 2:
@@ -612,6 +742,41 @@ def radioactiveZone():
 			player.ship.timeOnBorder = 0
 
 # Actions ----------------------------------------
+
+def setAttack():
+	
+	# Draw Laser and damage on enemies:
+	if player.selected['id'] >= 0 and player.attacking:
+		
+		if player.selected['dist'] < player.ship.weapon.dist:
+			
+			if player.ship.weapon.perSecond():
+				
+				id_ = player.selected['id']
+				enemy = enemies[id_]
+				
+				if enemy.ship.chp > 0:
+					
+					if enemy.ship.chp < player.ship.weapon.dmg:
+						dmg = enemy.ship.chp
+						# ~ enemy.ship.recvDamage(dmg, pct_sp)
+					else:
+						dmg = player.ship.weapon.dmg
+					
+					pct_sp = player.ship.weapon.pct_sp
+					mult = player.ship.weapon.mult
+					
+					player.selected['dmginfo']['dmg']    = dmg
+					player.selected['dmginfo']['pct_sp'] = pct_sp
+					player.selected['dmginfo']['mult']   = mult
+					player.selected['dmginfo']['time']   = game_time
+					
+				else:
+					print(enemy.id, enemy.creds, enemy.exp)
+					player.creds += enemy.creds
+					player.exp   += enemy.exp
+					enemy.creds = 0
+					enemy.exp   = 0
 
 def lookAtEnemy():
 	
@@ -676,11 +841,13 @@ def selectEnemy(event):
 					min_dist_name = name
 					min_dist_id   = p_id
 			if not min_dist_id == player.selected['id']:
+				player.attacking = False
 				player.selected['name'] = min_dist_name
 				player.selected['id']   = min_dist_id
 				data = data_f.format(min_dist_name, min_dist_id)
 		elif dists:
 			if not dists[0][2] == player.selected['id']:
+				player.attacking = False
 				player.selected['name'] = dists[0][1]
 				player.selected['id']   = dists[0][2]
 				data = data_f.format(dists[0][1], dists[0][2])
@@ -752,11 +919,14 @@ def detectEvents():
 			if event.key == pygame.K_p:
 				config.show['hp-sp'] = not config.show['hp-sp']
 			if event.key == pygame.K_u:
-				player.ship.levelUpHP(1)
+				player.ship.levelUpHP()
 			if event.key == pygame.K_i:
 				if not player.ship.shield_unlocked:
 					player.ship.shield_unlocked = True
-				player.ship.levelUpSP(1)
+				player.ship.levelUpSP()
+			
+			if event.key == pygame.K_h:
+				player.ship.weapon.levelUpDmg()
 			
 			if event.key == pygame.K_l:
 				player.ship.recvDamage(100, pct_sp=1, mult=1)
@@ -764,7 +934,6 @@ def detectEvents():
 		# ~ if event.type == pygame.MOUSEMOTION:
 		
 		if event.type == pygame.MOUSEBUTTONDOWN:
-			
 			players = selectEnemy(event)
 			if players: updateOtherPlayers(players)
 
@@ -886,27 +1055,6 @@ def renderText(text, font, color, _type=''):
 	rendered_text = font.render(text, config.antialiasing, color)
 	return rendered_text
 
-def drawAttack(des):
-	
-	# Draw Laser and damage on enemies:
-	if player.selected['id'] >= 0 and player.attacking:
-		
-		if player.selected['dist'] < player.ship.weapon.dist:
-			
-			if player.ship.weapon.perSecond():
-				
-				id_ = player.selected['id']
-				enemy = enemies[id_] 
-				dmg = player.ship.weapon.dmg
-				pct_sp = player.ship.weapon.pct_sp
-				mult = player.ship.weapon.mult
-				
-				# ~ enemy.ship.recvDamage(dmg, pct_sp)
-				
-				player.selected['dmginfo']['dmg']    = dmg
-				player.selected['dmginfo']['pct_sp'] = pct_sp
-				player.selected['dmginfo']['mult']   = mult
-
 def drawShipAndData(ship, des, name_color):
 	
 	# Draw red circle ----------------------------
@@ -980,15 +1128,15 @@ def drawShipAndData(ship, des, name_color):
 		height = 6
 		width = 50
 		
-		widthHP = width+int(ship.ship.hp/int((350/2)+(350/4)))+1
-		widthSP = width+int(ship.ship.sp/int((250/2)+(250/4)))+1
+		widthHP = width+int(ship.ship.hp/int((350/4)*3))+1
+		widthSP = width+int(ship.ship.sp/int((250/4)*3))+1
 		
 		if widthHP > 200: widthHP = 200
 		if widthSP > 200: widthSP = 200
 		
 		bars = [
 			(config.COLOR['HP'], widthHP, ship.ship.chp, ship.ship.hp),
-			(config.COLOR['SP'],  widthSP, ship.ship.csp, ship.ship.sp)
+			(config.COLOR['SP'], widthSP, ship.ship.csp, ship.ship.sp)
 		]
 		
 		for i, (color, width, cp, p) in enumerate(bars):
@@ -1004,6 +1152,8 @@ def drawShipAndData(ship, des, name_color):
 			
 			x = int(ship.x)+des[0] - width/2
 			y = int(ship.y)+des[1] - desp
+			# ~ if i == 1:
+				# ~ print(cp, '/', p)
 			pct = cp / p
 			position = [x, y, int(width*pct), height]
 			utils.roundRect(WIN, position, config.COLOR['Verde F'],
@@ -1016,20 +1166,22 @@ def drawShipAndData(ship, des, name_color):
 	# Draw taken damage --------------------------
 	if ship.ship.damageRecv:
 		
-		len_dmg = len(ship.ship.damageRecv)
-		for i in range(len_dmg):
-			if ship.ship.damageRecv[i]:
-				t1 = ship.ship.damageRecv[i][1]
-				if time.perf_counter()-t1 < 1.3:
-					if i+1 < len_dmg:
-						dmg = ship.ship.damageRecv[i+1][0]
-						t2  = ship.ship.damageRecv[i+1][1]
-						if abs(t2-t1) < 1.3:
-							ship.ship.damageRecv[i][0] += dmg
-							ship.ship.damageRecv[i+1] = None
-		
-		while None in ship.ship.damageRecv:
-			ship.ship.damageRecv.remove(None)
+		if config.show['acc_dmg']:
+			
+			len_dmg = len(ship.ship.damageRecv)
+			for i in range(len_dmg):
+				if ship.ship.damageRecv[i]:
+					t1 = ship.ship.damageRecv[i][1]
+					if time.perf_counter()-t1 < 1.3:
+						if i+1 < len_dmg:
+							dmg = ship.ship.damageRecv[i+1][0]
+							t2  = ship.ship.damageRecv[i+1][1]
+							if abs(t2-t1) < 1.3:
+								ship.ship.damageRecv[i][0] += dmg
+								ship.ship.damageRecv[i+1] = None
+			
+			while None in ship.ship.damageRecv:
+				ship.ship.damageRecv.remove(None)
 		
 		out = -1
 		for i, (damage, t) in enumerate(ship.ship.damageRecv):
@@ -1097,10 +1249,10 @@ def drawOtherInfo(game_time):
 	
 	font = config.FONT['Retro 18']
 	
-	# Draw scoreboard: -------------------------------------------------
-	enemies_sorted = sorted(enemies, key=lambda x: enemies[x].score)
+	# Draw Experience: -------------------------------------------------
+	enemies_sorted = sorted(enemies, key=lambda x: enemies[x].exp)
 	sort_enemies = list(reversed(enemies_sorted))
-	text = 'Scoreboard'
+	text = 'Experience'
 	text = renderText(text, font, config.COLOR['Blanco'])
 	start_y = 25
 	x = config.W - text.get_width() - 10
@@ -1117,8 +1269,8 @@ def drawOtherInfo(game_time):
 	text = renderText(text, font, config.COLOR['Blanco'])
 	WIN.blit(text,(10, 10))
 	
-	# Draw player score: -----------------------------------------------
-	text = 'Score: ' + str(round(player.score))
+	# Draw player Experience: -----------------------------------------------
+	text = 'Exp: ' + str(round(player.exp))
 	text = renderText(text, font, config.COLOR['Blanco'])
 	WIN.blit(text,(10, 15 + text.get_height()))
 
@@ -1133,6 +1285,28 @@ def drawConfigData():
 	widest = 0
 	
 	# Generate texts -----------------------------
+	if config.show['weapon']:
+		text = f'Weapon: {player.ship.weapon.name} ({player.ship.weapon.lvl})'
+		text = renderText(text, font, color)
+		texts['weapon_name'] = text
+		text = f'+Damage: {player.ship.weapon.dmg}'
+		text = renderText(text, font, color)
+		texts['weapon_dmg'] = text
+	if config.show['creds_exp']:
+		text = 'Exp: ' + str(player.exp)
+		text = renderText(text, font, color)
+		texts['exp'] = text
+		text = 'Creds: ' + str(player.creds)
+		text = renderText(text, font, color)
+		texts['creds'] = text
+	if config.show['speed']:
+		text = 'Speed: ' + str(player.ship.speed)
+		text = renderText(text, font, color)
+		texts['speed'] = text
+	if config.show['fps']:
+		text = 'FPS: '+str(config.fps)
+		text = renderText(text, font, color)
+		texts['fps'] = text
 	if config.show['pos']:
 		text = '({},{})'.format(
 			int(player.x/config.posdiv),
@@ -1140,14 +1314,6 @@ def drawConfigData():
 		).ljust(11)
 		text = renderText(text, font, color)
 		texts['pos'] = text
-	if config.show['fps']:
-		text = 'FPS: '+str(config.fps)
-		text = renderText(text, font, color)
-		texts['fps'] = text
-	if config.show['speed']:
-		text = 'Speed: ' + str(player.ship.speed)
-		text = renderText(text, font, color)
-		texts['speed'] = text
 	
 	for text in texts.values():
 		if text.get_width() > widest:
@@ -1167,10 +1333,10 @@ def drawConfigData():
 	)
 	
 	# Draw texts ---------------------------------
-	for i, text in enumerate(texts.values()):
+	for i, text in enumerate(list(texts.values())[::-1]):
 		WIN.blit(text, (despX, config.H-text.get_height()-10 -(despY*i)))
 
-def redrawWindow(game_time):
+def redrawWindow():
 	
 	BLANCO = config.COLOR['Blanco']
 	ROJO   = config.COLOR['Rojo']
@@ -1183,7 +1349,7 @@ def redrawWindow(game_time):
 	
 	# Draw Other Players: ==============================================
 	
-	enemies_sorted = sorted(enemies, key=lambda x: enemies[x].score)
+	enemies_sorted = sorted(enemies, key=lambda x: enemies[x].exp)
 	
 	for other_player_id in enemies_sorted:
 		
@@ -1224,29 +1390,33 @@ def redrawWindow(game_time):
 		text = renderText(text, font, BLANCO)
 		WIN.blit(text, (config.CENTER['x']-text.get_width()/2, 60))
 	
-	# Draw Attack: =====================================================
-	
-	drawAttack((desX,desY))
-	
 	# Draw other info on main layer data: ==============================
 	
-	drawOtherInfo(game_time)
+	# ~ drawOtherInfo(game_time)
 
 def createWindow():
 	
 	global WIN
 	
-	# make window start in top left hand corner
-	# os.environ['SDL_VIDEO_WINDOW_POS'] = '%d,%d' % (0,30)
+	# Make window start in top left hand corner
+	# os.environ['SDL_VIDEO_WINDOW_POS'] = f'{0},{30}'
+	
 	os.environ['SDL_VIDEO_CENTERED'] = '1'
 	
-	# setup pygame window
+	# Setup pygame window
 	WIN = pygame.display.set_mode((config.W,config.H), HWSURFACE | DOUBLEBUF | RESIZABLE)
-	pygame.display.set_caption('Valkyrio Online')
+	pygame.display.set_caption(f'{__project__} Online {__version__} - By: {__author__}')
+	
+	# Music
+	config.music.load(config.MUSIC['JNATHYN - Genesis'])
+	config.music.set_volume(config.music_vol/100)
+	config.music.play(-1)
 
 #=======================================================================
 
 def main():
+	
+	global game_time
 	
 	config.run = True
 	deltaTime = 1					# Delta Time
@@ -1272,10 +1442,12 @@ def main():
 		
 		players, game_time = server.send(player.data)		# Envia datos al servidor y recibe la información de los otros jugadores
 		
-		# Add damages received
+		#---------------------------------------------------------------
+		# Add damages received:
 		for enemy_id, values in players[player.id]['dmginfo'].items():
-			for dmg, pct_sp, mult in values:
+			for dmg, pct_sp, mult, t in values:
 				player.ship.recvDamage(dmg, pct_sp, mult)
+		#---------------------------------------------------------------
 		
 		# Update Data:
 		updateOtherPlayers(players)							# Actualiza los datos de los enemigos
@@ -1286,11 +1458,12 @@ def main():
 		
 		# Actions:
 		lookAtEnemy()										# Si el enemigo esta seleccionado o el jugador es seleccionado, las naves giran apuntandose.
+		setAttack()											# Agrega el daño causado al enemigo
 		radioactiveZone()									# Reglas para la zona radioactiva
 		calcFrames()										# Calcula la cantidad de fotogramas por segundo.
 		
 		# Draw Window:
-		redrawWindow(game_time)								# Redibuja todo (1 Fotograma)
+		redrawWindow()										# Redibuja todo (1 Fotograma)
 		
 		# Update Window Data
 		pygame.display.update()								# Actualiza la ventana con todos los cambios
@@ -1315,26 +1488,27 @@ def close():
 main()
 
 #=======================================================================
-# +Añadido: 24/08/2021
-# Código reorganizado. 
-# Apuntar o dejar de apuntar con Shift.
-# No mostrar informacion de cantidad de vida de enemigos.
-# Mostrar solo barras de vida y escudo al apuntar a los enemigos.
-# Mejorada mecanica de recuperacion de vida y escudo.
-# Agregadas funcion para imagenes resize y antialiasing
-# Agregado resize de ventana y ajuste automatico de posiciones en pantalla
-# +Añadido: 25/08/2021
-# Configuradas las barras de HP y SP, Aumentan de tamaño conforme el aumento
-#  de niveles con estado inicial en 50 píxeles en nivel 1 y a un máximo para
-#  ambos de 200 píxeles en el nivel 112.
-# Agregadas tonalidades opacas en textos de HP o SP al llegar a 0.
-# Agregada animación de daño recibido en todas las naves.
-# Configurada matriz de fondo con 2 tipos de seleccion de vista,
-#  ajustada (Por defecto) o Variable.
-# +Añadido: 26/08/2021
-# Agregado daño causado en enemigos (reflejado en tiempo real).
-# Agregado el mostrar la barra de SP al desbloquerla otros jugadores
-# Agregada funcion para el aumento de niveles de velocidad
-# Agregado que la velocidad se adaptade a la velocidad base al subir de nivel
-# Agregado un minimo de 1 caracter hasta 24 caracteres para los nombres.
+# Añadido el: 26/08/2021
+# + Actualizado el titulo de la ventana del juego.
+# + Agregados Mapas y sus limites de forma más dinámica.
+# + El ataque ya NO se mantiene activo cuando el enemigo se desconecta o selecciona otro objetivo.
+# + Arreglado bug en daño (el calculo daba ocasionalmente error con -1 punto en el daño, por los flotantes a enteros)
+# + Eliminado Score y agregado 'Experience (exp)' y 'Credits (creds)'
+# + Modificado Server para obtención de mejor manera los datos
+# + Agregado sistema de niveles en HP y SP más dinámico
+# + Corregida actualización de SP y HP en tiempo real en enemigos.
+# Añadido el: 28/08/2021
+# + Agregada Música de fondo al juego.
+# + Agregados los "Strangers" (NPCs) en el mapa. Estos son los seres que vagan por el
+#   espacio en sus naves, estos piratas o mercenarios te destruirán sin dudarlo.
+# + Mostrados Créditos y experiencia del jugador.
+# + Agregados Créditos y Experiencia al jugador al destruir Strangers.
+# + Respawn de Strangers al ser destruidos.
+# + Optimización en partes del código.
+# + Agregada curación automática de NPCs.
+# + Arreglado: último golpe no mostraba el daño causado.
+# Bugs Detectados:
+# + Daño causado de enemigos a enemigos no carga correctamente.
+
+
 

@@ -2,6 +2,7 @@
 import _pickle as pickle
 import socket
 
+kb = 1024
 
 class Network:
 	
@@ -26,12 +27,12 @@ class Network:
 				self.client.send(pickle.dumps(data))
 			else:
 				self.client.send(str.encode(data))
-			reply = self.client.recv(1024)
+			reply = self.client.recv(kb*2)
+			# ~ print(len(reply))
 			try:
 				reply = pickle.loads(reply)
 			except Exception as e:
 				print(e)
-			
 			return reply
 		except socket.error as e:
 			print(e)
