@@ -5,6 +5,7 @@ import atexit
 import random
 import socket
 import json
+import math
 import time
 
 # ======================================================================
@@ -42,6 +43,89 @@ kbyte = 1024
 
 # CLASSES ==============================================================
 
+
+class Utils:
+	
+	def __init__(self):
+		self.init_time = time.perf_counter()
+	
+	def perSecond(self, t=1):
+		if time.perf_counter() - self.init_time >= t:
+			self.init_time = time.perf_counter()
+			return True
+		return False
+	
+	def cos(self, deg=45, dec=None):
+		rad = math.radians(deg)
+		cos = math.cos(rad)
+		if dec: return round(cos, dec)
+		else: return cos
+	
+	def sin(self, deg=45, dec=None):
+		rad = math.radians(deg)
+		sin = math.sin(rad)
+		if dec: return round(sin, dec)
+		else: return sin
+	
+	def diagonal(self, h, deg=45, inv=False, dec=None):
+		deg = deg%90
+		ca = h * self.cos(deg, dec)
+		co = h * self.sin(deg, dec)
+		if inv:
+			return {'x': co, 'y': ca}
+		else:
+			return {'x': ca, 'y': co}
+	
+	def euclideanDistance(self, A, B):
+		''' Formula: d(A,B) = sqrt( (Xb-Xa)^2 + (Yb-Ya)^2 )
+		Donde: A=(Xa,Ya), B=(Xb,Yb)
+		'''
+		Xa, Ya = A
+		Xb, Yb = B
+		X = (Xb-Xa)**2
+		Y = (Yb-Ya)**2
+		d = math.sqrt(X+Y)
+		return d
+	
+	def getAngle(self, A, B):
+		Xa, Ya = A
+		Xb, Yb = B
+		X = (Xb-Xa)
+		Y = (Yb-Ya)
+		atan2 = math.atan2(Y, X)
+		angle = math.degrees(atan2)
+		return angle
+	
+	def convertTime(self, t):
+		if type(t) == str: return t
+		if int(t) < 60: return str(t) + 's'
+		else:
+			minutes = str(t // 60)
+			seconds = str(t % 60)
+			if int(seconds) < 10:
+				seconds = '0' + seconds
+			return minutes + ':' + seconds
+	
+	def roundRect(self, surface, rect, color, rad=20, border=0, inside=(0,0,0,0)):
+		rect = pygame.Rect(rect)
+		zeroed_rect = rect.copy()
+		zeroed_rect.topleft = 0,0
+		image = pygame.Surface(rect.size).convert_alpha()
+		image.fill((0,0,0,0))
+		self._renderRegion(image, zeroed_rect, color, rad)
+		if border:
+			zeroed_rect.inflate_ip(-2*border, -2*border)
+			self._renderRegion(image, zeroed_rect, inside, rad)
+		surface.blit(image, rect)
+	
+	def _renderRegion(self, image, rect, color, rad):
+		corners = rect.inflate(-2*rad, -2*rad)
+		for attribute in ('topleft', 'topright', 'bottomleft', 'bottomright'):
+			pygame.draw.circle(image, color, getattr(corners,attribute), rad)
+		image.fill(color, rect.inflate(-2*rad,0))
+		image.fill(color, rect.inflate(0,-2*rad))
+
+
 class Config:
 	
 	def __init__(self):
@@ -49,57 +133,81 @@ class Config:
 		# Configs: -----------------------------------------------------
 		
 		self.WEAPON = {
+			'Laser-mid': {
+				'path': 'img/weapons/laser.png',
+				'dmg': 100,			# Base damage
+				'inc': 1,			# Damage increment per level
+				'ammo': 1000,		# Ammunition
+				'dist': 250,		# Minimum distance to attack enemies
+				'pct_sp': .7,		# Damage percentage to SP
+				'mult': 1			# Damage multiplier
+			},
 			'Laser': {
 				'path': 'img/weapons/laser.png',
 				'dmg': 100,			# Base damage
-				'inc': 1,			# Damage increment per level 
+				'inc': 1,			# Damage increment per level
+				'ammo': 1000,		# Ammunition
 				'dist': 400,		# Minimum distance to attack enemies
 				'pct_sp': .7,		# Damage percentage to SP
+				'mult': 1			# Damage multiplier
+			},
+			'Plasma': {
+				'path': 'img/weapons/plasma.png',
+				'dmg': 1000,		# Base damage
+				'inc': 10,			# Damage increment per level
+				'ammo': 100,		# Ammunition
+				'dist': 200,		# Minimum distance to attack enemies
+				'pct_sp': .6,		# Damage percentage to SP
 				'mult': 1			# Damage multiplier
 			}
 		}
 		
 		self.speedmul = 100								# Speed multiplier
+		self.baseHP = 350
+		self.baseSP = 250
 		self.SHIP = {
 			'Prometheus': {
 				'path': 'img/Prometheus.png',
 				'weapon': 'Laser',
-				'speed': int(.5 * self.speedmul),
+				'min_dist_sel': 40,
+				'speed':   100,
 				'spd_lvl': 0,
-				'hp':    350,
-				'sp':    250
+				'hp':      self.baseHP,
+				'sp':      self.baseSP
 			}
 		}
 		
 		self.STRANGERS = {
 			'Iken': {
-				'path':     'img/Prometheus.png',
+				'path':     'img/Artyk_Alfa.png',
 				'creds':    100,
 				'exp':      100,
-				'wpn_name': 'Laser',
+				'min_dist': 350,
+				'min_dist_sel': 40,
+				'wpn_name': 'Laser-mid',
 				'wpn_lvl':  100,
-				'speed':    int(.5 * self.speedmul),
+				'speed':    50,
 				'spd_lvl':  0,
 				'lhp':      3,
-				'lsp':      6,
-				'hp':       350,
-				'sp':       250
+				'lsp':      3,
+				'hp':       self.baseHP,
+				'sp':       self.baseSP
 			}
 		}
 		
 		self.MAP = {
-			'Zwem':   { 'x': 200, 'y': 200 },
-			'Karont': { 'x': 300, 'y': 300 },
-			'Arkont': { 'x': 400, 'y': 400 }
+			'Zwem':   { 'x': 150, 'y': 150 },
+			'Karont': { 'x': 200, 'y': 200 },
+			'Arkont': { 'x': 250, 'y': 250 }
 		}
 		
 		# Data settings
-		self.BASE_SPEED = 1 * self.speedmul				# Base Speed of Ships
-		self.MAX_SPEED  = 2 * self.speedmul				# Max Speed of Ships
+		self.BASE_SPEED = 50							# Base Speed of Ships
+		self.MAX_SPEED  = 500							# Max Speed of Ships
 		self.dtdiv = 10 * self.speedmul					# Detla Time Divide
-		self.posdiv = 20								# Divide the actual position of pixels X and Y to generate coordinates for the map
-		self.rad_dmg = 500								# Radioactive Damage 
-		self.min_select_dist = 32						# Minimum target selection distance (on pixels)
+		self.posdiv = 30								# Divide the actual position of pixels X and Y to generate coordinates for the map
+		self.rad_dmg = 300								# Radioactive Damage 
+		# ~ self.min_select_dist = 32						# Minimum target selection distance (on pixels)
 		
 		# Counters
 		self.curr_frame = 0								# Current Frame
@@ -132,7 +240,6 @@ class Config:
 		
 		return limits
 
-config = Config()
 
 class Weapon:
 	
@@ -160,11 +267,15 @@ class Weapon:
 
 class Ship:
 	
-	def __init__(self, name):
+	def __init__(self, name, type_='Human'):
 		
 		self.name = name
-		self.base = config.SHIP[name]
-		self.weapon = Weapon(self.base['weapon'])
+		if type_ == 'Human':
+			self.base = config.SHIP[name]
+			self.weapon = Weapon(self.base['weapon'])
+		else:
+			self.base = config.STRANGERS[name]
+			self.weapon = Weapon(self.base['wpn_name'])
 		self.destroyed = False
 		self.spd_lvl = self.base['spd_lvl']
 		
@@ -289,6 +400,12 @@ class Stranger:
 		self.x = 0
 		self.y = 0
 		
+		self.delta_t_init = time.perf_counter()
+		self.t_init_move = 0
+		self.t_wait_move = 0
+		self.primary_atk = None				# Primary attacker
+		self.wait = True
+		self.dir = None
 		self.angle = 0
 		self.attacking = False
 		self.under_attack = False
@@ -315,23 +432,12 @@ class Stranger:
 		data_f  = '{{'
 		data_f +=   '"x":{},'
 		data_f +=   '"y":{},'
-		# ~ data_f +=   '"creds":{},'
-		# ~ data_f +=   '"exp":{},'
 		data_f +=   '"ang":{},'
 		data_f +=   '"atk":"{}",'
 		data_f +=   '"shipdata":{{'
-		# ~ data_f +=     '"name":"{}",'
-		# ~ data_f +=     '"lhp":{},'
-		# ~ data_f +=     '"lsp":{},'
 		data_f +=     '"chp":{},'
 		data_f +=     '"csp":{},'
-		# ~ data_f +=     '"s_unlkd":"{}",'
 		data_f +=     '"dtry":"{}"'
-		# ~ data_f +=     '"spd_lvl":{},'
-		# ~ data_f +=     '"weapon":{{'
-		# ~ data_f +=       '"name":"{}",'
-		# ~ data_f +=       '"lvl":{}'
-		# ~ data_f +=     '}}'
 		data_f +=   '}},'
 		data_f +=   '"dmginfo":{{'
 		data_f +=     '"id":{},'
@@ -345,20 +451,11 @@ class Stranger:
 		data = data_f.format(
 			round(self.x, 2),
 			round(self.y, 2),
-			# ~ self.creds,
-			# ~ self.exp,
 			self.angle,
 			self.attacking,
-			# ~ self.ship.name,
-			# ~ self.ship.lhp,
-			# ~ self.ship.lsp,
 			self.ship.chp,
 			self.ship.csp,
-			# ~ self.ship.shield_unlocked,
 			self.ship.destroyed,
-			# ~ self.ship.spd_lvl,
-			# ~ self.ship.weapon.name,
-			# ~ self.ship.weapon.lvl,
 			self.selected['id'],
 			self.selected['dmginfo']['dmg'],
 			self.selected['dmginfo']['pct_sp'],
@@ -379,38 +476,30 @@ class Stranger:
 		player_s = player['ship']
 		
 		data_s = data['shipdata']
-		# ~ data_sw = data_s['weapon']
 		
 		if not player['x']         == data['x']:                     player['x']         = data['x']
 		if not player['y']         == data['y']:                     player['y']         = data['y']
-		# ~ if not player['creds']     == data['creds']:                 player['creds']     = data['creds']
-		# ~ if not player['exp']       == data['exp']:                   player['exp']       = data['exp']
 		if not player['ang']       == data['ang']:                   player['ang']       = data['ang']
 		if not player['atk']       == (data['atk'] == 'True'):       player['atk']       = data['atk'] == 'True'
-		# ~ if not player_s['name']    == data_s['name']:                player_s['name']    = data_s['name']
-		# ~ if not player_s['lhp']     == data_s['lhp']:                 player_s['lhp']     = data_s['lhp']
-		# ~ if not player_s['lsp']     == data_s['lsp']:                 player_s['lsp']     = data_s['lsp']
 		if not player_s['chp']     == data_s['chp']:                 player_s['chp']     = data_s['chp']
 		if not player_s['csp']     == data_s['csp']:                 player_s['csp']     = data_s['csp']
-		# ~ if not player_s['s_unlkd'] == (data_s['s_unlkd'] == 'True'): player_s['s_unlkd'] = data_s['s_unlkd'] == 'True'
 		if not player_s['dtry']    == (data_s['dtry'] == 'True'):    player_s['dtry']    = data_s['dtry'] == 'True'
-		# ~ if not player_s['spd_lvl'] == data_s['spd_lvl']:             player_s['spd_lvl'] = data_s['spd_lvl']
-		# ~ if not player_sw['name']   == data_sw['name']:               player_sw['name']   = data_sw['name']
-		# ~ if not player_sw['lvl']    == data_sw['lvl']:                player_sw['lvl']    = data_sw['lvl']
 		
 		if data['dmginfo']['dmg'] > 0 and data['dmginfo']['id'] >= 0:
 			
 			dmginfo = players[data['dmginfo']['id']]['dmginfo']
 			
-			if not dmginfo.get(current_id):
-				dmginfo[current_id] = []
+			if not dmginfo.get(self.id):
+				dmginfo[self.id] = []
 			
-			dmginfo[current_id].append([
+			dmginfo[self.id].append([
 				data['dmginfo']['dmg'],
 				data['dmginfo']['pct_sp'],
 				data['dmginfo']['mult'],
 				data['dmginfo']['time']
 			])
+		
+		# ~ time.sleep(.01)
 		
 		players[self.id]['dmginfo'] = {}
 		
@@ -431,9 +520,9 @@ class Stranger:
 		
 		self.angle = stranger['ang']
 		self.attacking = stranger['atk']
-			
+		
 		self.ship_name = stranger['ship']['name']
-		self.ship = Ship(self.ship_name)
+		self.ship = Ship(self.ship_name, 'Stranger')
 		
 		self.ship.hp = 0
 		self.ship.sp = 0
@@ -459,19 +548,264 @@ class Stranger:
 		
 		self.ship.weapon = Weapon(stranger['ship']['weapon']['name'])
 		self.ship.weapon.levelUpDmg(stranger['ship']['weapon']['lvl'])
-
-	def chkDmgRecv(self, primary_atk):
+	
+	def radioactiveZone(self):
+		
+		if (self.x < 0 or config.map_limits['x'] < self.x)\
+		or (self.y < 0 or config.map_limits['y'] < self.y):
+			if self.ship.timeOnBorder == 0:
+				self.ship.timeOnBorder = time.perf_counter()
+			if time.perf_counter() - self.ship.timeOnBorder > 2:
+				self.ship.timeOnBorder = time.perf_counter()
+				self.ship.recvDamage(config.rad_dmg, pct_sp=0)
+		else:
+			if self.ship.timeOnBorder > 0:
+				self.ship.timeOnBorder = 0
+	
+	def chkDmgRecv(self):
 		
 		for enemy_id, values in players[self.id]['dmginfo'].items():
 			for dmg, pct_sp, mult, t in values:
 				self.ship.recvDamage(dmg, pct_sp, mult)
 			
-			if (primary_atk == None and enemy_id in players) \
-			or (not primary_atk == None and not primary_atk in players):
-				primary_atk = enemy_id
+			if (self.primary_atk == None and enemy_id in players) \
+			or (not self.primary_atk == None and not self.primary_atk in players):
+				self.primary_atk = enemy_id
+	
+	def deltaTime(self, FPS, mili=True):
 		
-		return primary_atk
+		delta = time.perf_counter() - self.delta_t_init
+		self.delta_t_init = time.perf_counter()
 		
+		if mili: delta = int(delta * 1000)
+		
+		time.sleep(1/FPS)
+		
+		return delta
+	
+	def setAttack(self):
+		
+		# Draw Laser and damage on enemies:
+		if self.selected['id'] >= 0 and self.attacking:
+			# ~ print(self.selected['dist'], self.ship.weapon.dist)
+			if self.selected['dist'] < self.ship.weapon.dist:
+				
+				id_ = self.selected['id']
+				try:
+					enemy = players[id_]
+				except:
+					self.selected['name'] = ''
+					self.selected['id']   = -1
+					self.selected['dist'] = -1
+					self.attacking = False
+					return
+				
+				if self.ship.weapon.perSecond():
+					
+					if enemy['ship']['chp'] > 0:
+						
+						if enemy['ship']['chp'] < self.ship.weapon.dmg:
+							dmg = enemy['ship']['chp']
+						else:
+							dmg = self.ship.weapon.dmg
+						
+						pct_sp = self.ship.weapon.pct_sp
+						mult = self.ship.weapon.mult
+						
+						self.selected['dmginfo']['dmg']    = dmg
+						self.selected['dmginfo']['pct_sp'] = pct_sp
+						self.selected['dmginfo']['mult']   = mult
+						self.selected['dmginfo']['time']   = game_time
+				
+				if enemy['ship']['chp'] == 0:
+					self.selected['name'] = ''
+					self.selected['id']   = -1
+					self.selected['dist'] = -1
+					self.attacking = False
+	
+	def lookAtPlayer(self, p_id, data):
+		
+		# Gira hacia el enemigo
+		if not p_id == self.selected['id']\
+		and self.selected['id'] >= 0:
+			return
+		
+		desX = (int(config.CENTER['x'])-int(self.x))	# Desplazamiento en X
+		desY = (int(config.CENTER['y'])-int(self.y))	# Desplazamiento en Y
+		
+		selected_pos = data['x']+desX, data['y']+desY
+		pposX, pposY = int(config.CENTER['x']), int(config.CENTER['y'])
+		
+		dist = round(utils.euclideanDistance((pposX,pposY), selected_pos), 2)
+		
+		# ~ print(dist, self.ship.base['min_dist'])
+		
+		if self.primary_atk:
+			self.selected['name'] = data['name']
+			self.selected['id']   = p_id
+			self.selected['dist'] = dist
+			self.attacking = True
+		
+		if dist < self.ship.base['min_dist']:
+			self.angle = -round(utils.getAngle((pposX,pposY), selected_pos), 2)
+			self.selected['name'] = data['name']
+			self.selected['id']   = p_id
+			self.selected['dist'] = dist
+			self.attacking = True
+		elif dist > self.ship.base['min_dist']*2:
+			self.selected['name'] = ''
+			self.selected['id']   = -1
+			self.selected['dist'] = -1
+			self.primary_atk = None
+		else:
+			self.attacking = False
+	
+	def randomMove(self, deltaTime):
+		
+		x = int(self.x/config.posdiv)
+		y = int(self.y/config.posdiv)
+		limitX = config.MAP[config.map_name]['x']
+		limitY = config.MAP[config.map_name]['y']
+		speed = self.ship.speed / 100
+		# ~ speed *= deltaTime
+		degrees = 0
+		
+		if not self.dir:
+			# ~ print(x, y, self.ship.speed, speed)
+			self.wait = False
+			self.dir = random.choice(['r','u','l','d','ru','ul','ld','dr'])
+		
+		for p_id, data in players.items():
+			if data['type'] == 'Human':
+				self.lookAtPlayer(p_id, data)
+		
+		if self.selected['id'] >= 0:
+			
+			self.setAttack()
+			
+			try:
+				enemy = players[self.selected['id']]
+			except:
+				self.selected['name'] = ''
+				self.selected['id']   = -1
+				self.selected['dist'] = -1
+				self.attacking = False
+				return
+			
+			ex = int(enemy['x']/config.posdiv)
+			ey = int(enemy['y']/config.posdiv)
+			
+			positions = ((self.x,self.y),(enemy['x'],enemy['y']))
+			dist_px = int(utils.euclideanDistance(*positions))
+			self.angle = -utils.getAngle(*positions)
+			
+			mov_speed = utils.diagonal(speed, self.angle)
+			mov_speed_inv = utils.diagonal(speed, self.angle, inv=True)
+			
+			if dist_px >= 200:
+				if x > ex and y < ey:
+					self.x -= mov_speed['x']
+					self.y += mov_speed['y']
+				elif x < ex and y < ey:
+					self.x += mov_speed_inv['x']
+					self.y += mov_speed_inv['y']
+				elif x < ex and y > ey:
+					self.x += mov_speed['x']
+					self.y -= mov_speed['y']
+				elif x > ex and y > ey:
+					self.x -= mov_speed_inv['x']
+					self.y -= mov_speed_inv['y']
+				elif x > ex and y == ey:
+					self.x -= mov_speed['x']
+				elif x < ex and y == ey:
+					self.x += mov_speed['x']
+				elif y > ey and x == ex:
+					self.y -= mov_speed_inv['y']
+				elif y < ey and x == ex:
+					self.y += mov_speed_inv['y']
+				
+		else:
+			
+			if self.wait:
+				if time.perf_counter() - self.t_init_move >= self.t_wait_move:
+					self.wait = False
+			else:
+				
+				if  10 < x < limitX-10\
+				and 10 < y < limitY-10:
+					
+					if 'ru' in self.dir:
+						degrees = 0+45
+						mov_speed = utils.diagonal(speed, degrees)
+						self.x += mov_speed['x']
+						self.y -= mov_speed['y']
+					elif 'lu' in self.dir:
+						degrees = 90+45
+						mov_speed_inv = utils.diagonal(speed, degrees, inv=True)
+						self.x -= mov_speed_inv['y']
+						self.y -= mov_speed_inv['x']
+					elif 'ld' in self.dir:
+						degrees = 180+45
+						mov_speed = utils.diagonal(speed, degrees)
+						self.x -= mov_speed['x']
+						self.y += mov_speed['y']
+					elif 'rd' in self.dir:
+						degrees = 270+45
+						mov_speed_inv = utils.diagonal(speed, degrees, inv=True)
+						self.x += mov_speed_inv['y']
+						self.y += mov_speed_inv['x']
+					elif 'r' in self.dir:
+						degrees = 0
+						mov_speed = utils.diagonal(speed, degrees)
+						self.x += mov_speed['x']
+					elif 'u' in self.dir:
+						degrees = 90
+						mov_speed = utils.diagonal(speed, degrees)
+						self.y -= mov_speed['y']
+					elif 'l' in self.dir:
+						degrees = 180
+						mov_speed_inv = utils.diagonal(speed, degrees, inv=True)
+						self.x -= mov_speed_inv['x']
+					elif 'd' in self.dir:
+						degrees = 270
+						mov_speed_inv = utils.diagonal(speed, degrees, inv=True)
+						self.y += mov_speed_inv['y']
+					
+					self.angle = degrees
+					
+					if random.random() < .001:
+						self.dir = random.choice(['r','u','l','d','ru','ul','ld','dr'])
+						self.wait = True
+						self.t_wait_move = random.randint(1,3)
+						self.t_init_move = time.perf_counter()
+					
+				else:
+					
+					if x <= 10:
+						self.x += speed
+						# ~ self.dir = random.choice(['r','u','d','ru','rd'])
+						self.dir = random.choice(['r','ru','rd'])
+					elif x >= limitX-10:
+						self.x -= speed
+						# ~ self.dir = random.choice(['l','u','d','lu','ld'])
+						self.dir = random.choice(['l','lu','ld'])
+					elif y <= 10:
+						self.y += speed
+						# ~ self.dir = random.choice(['d','l','r','dl','dr'])
+						self.dir = random.choice(['d','dl','dr'])
+					elif y >= limitY-10:
+						self.y -= speed
+						# ~ self.dir = random.choice(['u','l','r','ul','ur'])
+						self.dir = random.choice(['u','ul','ur'])
+					
+					self.wait = True
+					self.t_wait_move = random.randint(1,3)
+					self.t_init_move = time.perf_counter()
+		
+#----------------
+
+utils  = Utils()
+config = Config()
 
 # STRANGERS ============================================================
 
@@ -479,15 +813,15 @@ def threaded_bot(stranger_id, stranger_name):
 	
 	global connections, players, game_time, _id
 	
-	FPS = 1/240
-	
 	while True:
 		
 		stranger_info = config.STRANGERS[stranger_name]
+		map_limits = config.MAP[config.map_name]
+		FPS = 240
 		
 		players[stranger_id] = {
-			'x':     random.randrange(0,2000),
-			'y':     random.randrange(0,2000),
+			'x':     random.randrange(20*config.posdiv, (map_limits['x']-20)*config.posdiv),
+			'y':     random.randrange(20*config.posdiv, (map_limits['y']-20)*config.posdiv),
 			'name':  stranger_name,								# Stranger name
 			'type':  'Stranger',								# Type of ship
 			'creds': stranger_info['creds'],					# Number of credits
@@ -495,7 +829,7 @@ def threaded_bot(stranger_id, stranger_name):
 			'ang':   0,											# Angle
 			'atk':   False,										# Attacking
 			'ship': {
-				'name':    'Prometheus',						# Ship Name
+				'name':    stranger_name,						# Ship Name
 				'lhp':     stranger_info['lhp'],				# Health Points
 				'lsp':     stranger_info['lsp'],				# Shield Points
 				'chp':     stranger_info['lhp']*stranger_info['hp'],		# Current Health Points
@@ -520,7 +854,7 @@ def threaded_bot(stranger_id, stranger_name):
 		
 		print(f"[LOG] {stranger_name} Generated. ID: {stranger_id} ({int(stranger.x/config.posdiv)},{int(stranger.y/config.posdiv)})")
 		
-		primary_atk = None				# Primary attacker
+		deltaTime = 1
 		
 		while stranger.ship.chp > 0:
 			
@@ -528,22 +862,26 @@ def threaded_bot(stranger_id, stranger_name):
 				
 				game_time = int(time.perf_counter()-start_time)
 				
-				primary_atk = stranger.chkDmgRecv(primary_atk)
+				stranger.chkDmgRecv()
 				stranger.setData()
 				stranger.ship.healHP()
 				stranger.ship.healSP()
+				# ~ stranger.radioactiveZone()
+				stranger.randomMove(deltaTime)
+				
+				deltaTime = stranger.deltaTime(FPS) / config.dtdiv
 				
 			# ~ except Exception as e:
 				# ~ if not str(e).startswith('[WinError 10054]'):
 					# ~ print(e, 'Error')
-				# ~ break
-			
-				time.sleep(FPS)
+				''# ~ break
 		
 		print(f'[LOG] Destroyed: {stranger_name}, ID: {stranger_id}')
 		
-		players[primary_atk]['creds'] += players[stranger_id]['creds']
-		players[primary_atk]['exp']   += players[stranger_id]['exp']
+		try:
+			players[stranger.primary_atk]['creds'] += players[stranger_id]['creds']
+			players[stranger.primary_atk]['exp']   += players[stranger_id]['exp']
+		except: pass
 		
 		time.sleep(1)
 		
@@ -553,11 +891,10 @@ def threaded_bot(stranger_id, stranger_name):
 		stranger_id = _id
 
 
-for i in range(10):
+for i in range(20):
 	_id += 1
 	thread.start_new_thread(threaded_bot, (_id, 'Iken'))
 	time.sleep(.01)
-time.sleep(1)
 
 # FUNCTIONS ============================================================
 
@@ -567,14 +904,15 @@ def threaded_client(conn, _id):
 	
 	FPS = 1/240
 	current_id = _id
+	map_limits = config.MAP[config.map_name]
 	
 	data = conn.recv(24)
 	name = data.decode('utf-8')
 	print(f"[LOG] '{name}' connected to the server. Client Id: {_id}")
 	
 	players[current_id] = {
-		'x':     random.randrange(1200,1600),
-		'y':     random.randrange(1200,1600),
+		'x':     random.randrange(20*config.posdiv, (map_limits['x']-20)*config.posdiv),
+		'y':     random.randrange(20*config.posdiv, (map_limits['y']-20)*config.posdiv),
 		'name':  name,					# Username
 		'type':  'Human',				# Type of ship
 		'creds': 0,						# Number of credits
@@ -681,9 +1019,9 @@ def threaded_client(conn, _id):
 				
 				if not selected_name:
 					unselected = players[current_id]['selected']['name']
-					print(f"[UNSELECT] '{name}' unselect to '{unselected}'")
+					print(f"[UNSELECT] '{name}' (ID:{current_id}) unselect to '{unselected}' (ID:{players[current_id]['selected']['id']})")
 				else:
-					print(f"[SELECT] '{name}' select to '{selected_name}'")
+					print(f"[SELECT] '{name}' (ID:{current_id}) select to '{selected_name}' (ID:{selected_id})")
 				
 				players[current_id]['selected']['name'] = selected_name
 				if selected_name:

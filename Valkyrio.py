@@ -15,7 +15,7 @@ import os
 
 __project__ = 'Valkyrio'
 __author__  = 'LawlietJH'
-__version__ = '0.0.4 (Alfa)'
+__version__ = '0.0.5 (Alfa)'
 
 __license__ = 'MIT'
 __status__  = 'Development'
@@ -170,54 +170,84 @@ class Config:
 		# Configs: -----------------------------------------------------
 		
 		self.show = {
-			'name':      True,		# Show the name of the player and the name of the enemies
-			'speed':     True,		# Show player speed 
-			'fps':       True,		# Show fps
-			'pos':       True,		# Show player coordinates
-			'hp-sp':     True,		# Show player's HP and SP numbers
-			'weapon':    True,		# Displays the name and level of the weapon
-			'creds_exp': True,		# Show accumulated damage
-			'acc_dmg':   False		# Show accumulated damage
+			'name':        True,		# Show the name of the player and the name of the enemies
+			'speed':       True,		# Show player speed 
+			'fps':         True,		# Show fps
+			'pos':         True,		# Show player coordinates
+			'hp-sp':       True,		# Show player's HP and SP numbers
+			'weapon':      True,		# Displays the name and level of the weapon
+			'creds_exp':   True,		# Show accumulated damage
+			'acc_dmg':     False,		# Show accumulated damage
+			'map_enemies': True			# Show all enemies on minimap
 		}
 		
 		self.WEAPON = {
+			'Laser-mid': {
+				'path': 'img/weapons/laser.png',
+				'dmg': 100,			# Base damage
+				'inc': 1,			# Damage increment per level
+				'ammo': 1000,		# Ammunition
+				'dist': 250,		# Minimum distance to attack enemies
+				'pct_sp': .7,		# Damage percentage to SP
+				'mult': 1			# Damage multiplier
+			},
 			'Laser': {
 				'path': 'img/weapons/laser.png',
 				'dmg': 100,			# Base damage
-				'inc': 1,			# Damage increment per level 
+				'inc': 1,			# Damage increment per level
+				'ammo': 1000,		# Ammunition
 				'dist': 400,		# Minimum distance to attack enemies
 				'pct_sp': .7,		# Damage percentage to SP
+				'mult': 1			# Damage multiplier
+			},
+			'Plasma': {
+				'path': 'img/weapons/plasma.png',
+				'dmg': 1000,		# Base damage
+				'inc': 10,			# Damage increment per level
+				'ammo': 100,		# Ammunition
+				'dist': 200,		# Minimum distance to attack enemies
+				'pct_sp': .6,		# Damage percentage to SP
 				'mult': 1			# Damage multiplier
 			}
 		}
 		
 		self.speedmul = 100								# Speed multiplier
+		self.baseHP = 350
+		self.baseSP = 250
 		self.SHIP = {
 			'Prometheus': {
 				'path': 'img/Prometheus.png',
 				'weapon': 'Laser',
-				'speed': int(.5 * self.speedmul),
+				'min_dist_sel': 40,
+				'speed':   100,
 				'spd_lvl': 0,
-				'hp':    350,
-				'sp':    250
+				'hp':      self.baseHP,
+				'sp':      self.baseSP
 			}
 		}
 		
 		self.STRANGERS = {
 			'Iken': {
-				'path':   'img/Prometheus.png',
-				'weapon': 'Laser',
-				'speed':   int(.5 * self.speedmul),
-				'spd_lvl': 0,
-				'hp':      15,
-				'sp':      25
+				'path':     'img/Prometheus.png',
+				'creds':    100,
+				'exp':      100,
+				'min_dist': 350,
+				'min_dist_sel': 40,
+				'wpn_name': 'Laser',
+				'wpn_lvl':  100,
+				'speed':    50,
+				'spd_lvl':  0,
+				'lhp':      3,
+				'lsp':      3,
+				'hp':       self.baseHP,
+				'sp':       self.baseSP
 			}
 		}
 		
 		self.MAP = {
-			'Zwem':   { 'x': 200, 'y': 200 },
-			'Karont': { 'x': 300, 'y': 300 },
-			'Arkont': { 'x': 400, 'y': 400 }
+			'Zwem':   { 'x': 150, 'y': 150 },
+			'Karont': { 'x': 200, 'y': 200 },
+			'Arkont': { 'x': 250, 'y': 250 }
 		}
 		
 		# Username settings
@@ -225,12 +255,12 @@ class Config:
 		self.name_max_char_len = 24						# Maximum Character Length
 		
 		# Data settings
-		self.BASE_SPEED = 1 * self.speedmul				# Base Speed of Ships
-		self.MAX_SPEED  = 2 * self.speedmul				# Max Speed of Ships
+		self.BASE_SPEED = 50							# Base Speed of Ships
+		self.MAX_SPEED  = 500							# Max Speed of Ships
 		self.dtdiv = 10 * self.speedmul					# Detla Time Divide
-		self.posdiv = 20								# Divide the actual position of pixels X and Y to generate coordinates for the map
+		self.posdiv = 30								# Divide the actual position of pixels X and Y to generate coordinates for the map
 		self.rad_dmg = 500								# Radioactive Damage 
-		self.min_select_dist = 32						# Minimum target selection distance (on pixels)
+		# ~ self.min_select_dist = 32						# Minimum target selection distance (on pixels)
 		self.acc_dmg = False							#
 		
 		# Counters
@@ -254,12 +284,20 @@ class Config:
 		
 		# Map settings
 		self.map_name = 'Zwem'
-		
-		# Objects that are off the screen disappear
-		self.limit_obj_dist = int(utils.euclideanDistance((
-								self.CENTER['x'], self.CENTER['y']),
-								(0, 0)
-							)) + 200
+		self.map_w = 120
+		self.map_h = 100
+	
+	@property
+	def map_x(self):
+		return self.W - self.map_w - 5
+	
+	@property
+	def map_y(self):
+		return self.H - self.map_h - 5
+	
+	# ~ @property
+	# ~ def min_select_dist(self):		# <----------- Continue
+		# ~ return 32
 	
 	@property
 	def CENTER(self):
@@ -288,6 +326,15 @@ class Config:
 			}
 		
 		return limits
+	
+	@property
+	def limit_obj_dist(self):
+		# Objects that are off the screen disappear
+		limit_obj_dist = int(utils.euclideanDistance((
+								self.CENTER['x'], self.CENTER['y']),
+								(0, 0)
+							)) + 100
+		return limit_obj_dist
 
 
 class Weapon:
@@ -316,11 +363,15 @@ class Weapon:
 
 class Ship:
 	
-	def __init__(self, name):
+	def __init__(self, name, type_='Human'):
 		
 		self.name = name
-		self.base = config.SHIP[name]
-		self.weapon = Weapon(self.base['weapon'])
+		if type_ == 'Human':
+			self.base = config.SHIP[name]
+			self.weapon = Weapon(self.base['weapon'])
+		else:
+			self.base = config.STRANGERS[name]
+			self.weapon = Weapon(self.base['wpn_name'])
 		self.destroyed = False
 		self.spd_lvl = self.base['spd_lvl']
 		
@@ -587,8 +638,12 @@ class Player:
 		self.attacking = player['atk']
 			
 		self.ship_name = player['ship']['name']
-		self.ship_path = config.SHIP[self.ship_name]['path']
-		self.ship = Ship(self.ship_name)
+		if player['type'] == 'Human':
+			self.ship_path = config.SHIP[self.ship_name]['path']
+			self.ship = Ship(self.ship_name)
+		else:
+			self.ship_path = config.STRANGERS[self.ship_name]['path']
+			self.ship = Ship(self.ship_name, 'Stranger')
 		
 		self.ship.hp = 0
 		self.ship.sp = 0
@@ -648,7 +703,10 @@ class Player:
 		
 		if not self.ship_name == player['ship']['name']:
 			self.ship_name = player['ship']['name']
-			self.ship_path = config.SHIP[self.ship_name]['path']
+			if player['type'] == 'Human':
+				self.ship_path = config.SHIP[self.ship_name]['path']
+			else:
+				self.ship_path = config.STRANGERS[self.ship_name]['path']
 			self.ship = Ship(self.ship_name)
 		
 		# ~ if not player['ship']['hp'] == self.ship.hp:
@@ -692,7 +750,7 @@ class Player:
 		# ~ else:
 			# ~ if not self.ship.weapon.lvl == player['ship']['weapon']['lvl']:
 				# ~ lvl = self.ship.weapon.lvl - player['ship']['weapon']['lvl']
-				# ~ self.ship.weapon.levelUpDmg(lvl)
+		''		# ~ self.ship.weapon.levelUpDmg(lvl)
 	
 	def loadImage(self, filename, transparent=True):
 		try: image = pygame.image.load(filename)
@@ -750,16 +808,15 @@ def setAttack():
 		
 		if player.selected['dist'] < player.ship.weapon.dist:
 			
+			id_ = player.selected['id']
+			enemy = enemies[id_]
+			
 			if player.ship.weapon.perSecond():
-				
-				id_ = player.selected['id']
-				enemy = enemies[id_]
 				
 				if enemy.ship.chp > 0:
 					
 					if enemy.ship.chp < player.ship.weapon.dmg:
 						dmg = enemy.ship.chp
-						# ~ enemy.ship.recvDamage(dmg, pct_sp)
 					else:
 						dmg = player.ship.weapon.dmg
 					
@@ -770,21 +827,22 @@ def setAttack():
 					player.selected['dmginfo']['pct_sp'] = pct_sp
 					player.selected['dmginfo']['mult']   = mult
 					player.selected['dmginfo']['time']   = game_time
-					
-				else:
-					print(enemy.id, enemy.creds, enemy.exp)
-					player.creds += enemy.creds
-					player.exp   += enemy.exp
-					enemy.creds = 0
-					enemy.exp   = 0
+			
+			if enemy.ship.chp == 0:
+				player.creds += enemy.creds
+				player.exp   += enemy.exp
+				player.selected['name'] = ''
+				player.selected['id']   = -1
+				player.selected['dist'] = -1
+				player.attacking = False
 
 def lookAtEnemy():
 	
-	desX = (int(config.CENTER['x'])-int(player.x))	# Desplazamiento en X
-	desY = (int(config.CENTER['y'])-int(player.y))	# Desplazamiento en Y
-	
 	# Gira hacia el enemigo
 	if player.selected['id'] >= 0 and player.attacking:
+		
+		desX = (int(config.CENTER['x'])-int(player.x))	# Desplazamiento en X
+		desY = (int(config.CENTER['y'])-int(player.y))	# Desplazamiento en Y
 		
 		player.ship.time_hp_init = 0									# Reinicia el contador para regenracion de HP
 		
@@ -824,10 +882,10 @@ def selectEnemy(event):
 			
 			dist = utils.euclideanDistance((posX, posY), (pposX,pposY))
 			
-			if dist < config.min_select_dist:
+			if dist < other_player.ship.base['min_dist_sel']:
 				dists.append(( dist, other_player.name, other_player_id ))
 		
-		min_dist      = config.min_select_dist
+		min_dist      = other_player.ship.base['min_dist_sel']
 		min_dist_name = ''
 		min_dist_id   = 0
 		
@@ -911,9 +969,9 @@ def detectEvents():
 					player.attacking = not player.attacking
 			
 			if event.key == pygame.K_j:
-				player.ship.speedLevelUP(-1)
+				player.ship.speedLevelUP(-10)
 			if event.key == pygame.K_k:
-				player.ship.speedLevelUP()
+				player.ship.speedLevelUP(10)
 			if event.key == pygame.K_o:
 				config.show['name'] = not config.show['name']
 			if event.key == pygame.K_p:
@@ -940,8 +998,8 @@ def detectEvents():
 def movements(deltaTime):
 		
 		keys = pygame.key.get_pressed()
-		speed = player.ship.speed
-		speed = speed * deltaTime
+		speed = player.ship.speed / 100
+		# ~ speed *= deltaTime
 		
 		movements = False
 		degrees = 0
@@ -954,10 +1012,10 @@ def movements(deltaTime):
 		downMove  = keys[pygame.K_DOWN]  or keys[pygame.K_s]
 		leftRightMove = leftMove and rightMove
 		upDownMove    = upMove and downMove
-		player_curr_pos = int(player.x/config.posdiv), int(player.y/config.posdiv)
+		# ~ player_curr_pos = int(player.x/config.posdiv), int(player.y/config.posdiv)
 		
 		if leftMove and not rightMove:
-			player.curr_pos = player_curr_pos
+			# ~ player.curr_pos = player_curr_pos
 			movements = True
 			if not upDownMove and (upMove or downMove):
 				if   upMove:   degrees = 90
@@ -971,7 +1029,7 @@ def movements(deltaTime):
 			# ~ if player.curr_pos[0]+2 < player_curr_pos[0]:
 				# ~ x = player.curr_pos[0]
 			# ~ else:
-				player.curr_pos = player_curr_pos
+				# ~ player.curr_pos = player_curr_pos
 				movements = True
 				if not upDownMove and (upMove or downMove):
 					if   upMove:   degrees = 90
@@ -982,7 +1040,7 @@ def movements(deltaTime):
 					x += speed
 		
 		if upMove and not downMove:
-			player.curr_pos = player_curr_pos
+			# ~ player.curr_pos = player_curr_pos
 			movements = True
 			if not leftRightMove and (leftMove or rightMove):
 				if leftMove:  degrees += 45
@@ -993,7 +1051,7 @@ def movements(deltaTime):
 				y -= speed
 		
 		if downMove and not upMove:
-			player.curr_pos = player_curr_pos
+			# ~ player.curr_pos = player_curr_pos
 			movements = True
 			if not leftRightMove and (leftMove or rightMove):
 				if leftMove:  degrees -= 45
@@ -1055,6 +1113,36 @@ def renderText(text, font, color, _type=''):
 	rendered_text = font.render(text, config.antialiasing, color)
 	return rendered_text
 
+def drawMinimap(map_enemies_pos):
+	
+	# Minimap positions
+	position = [
+		config.map_x, config.map_y,
+		config.map_w, config.map_h
+	]
+	
+	# Draw minimap background
+	utils.roundRect(WIN, position, config.COLOR['Verde F'],
+		3, 1, (*config.COLOR['Verde S'], 150)
+	)
+	
+	# Draw player position on minimap
+	x = (player.x/config.posdiv) / config.MAP[config.map_name]['x'] * config.map_w + config.map_x
+	y = (player.y/config.posdiv) / config.MAP[config.map_name]['y'] * config.map_h + config.map_y
+	pygame.draw.circle(WIN, config.COLOR['Blanco'], (x,y), 1, 1)
+	
+	# Draw Map Name
+	font = config.FONT['Retro 14']
+	text = config.map_name
+	text = renderText(text, font, config.COLOR['Blanco'])
+	WIN.blit(text, (config.map_x, config.map_y-text.get_height()))
+	
+	# Draw enemies positions on minimap
+	for x, y in map_enemies_pos:
+		x = (x/config.posdiv) / config.MAP[config.map_name]['x'] * config.map_w + config.map_x
+		y = (y/config.posdiv) / config.MAP[config.map_name]['y'] * config.map_h + config.map_y
+		pygame.draw.circle(WIN, config.COLOR['Rojo'], (x,y), 1, 1)
+
 def drawShipAndData(ship, des, name_color):
 	
 	# Draw red circle ----------------------------
@@ -1063,7 +1151,7 @@ def drawShipAndData(ship, des, name_color):
 			(255,0,0), (
 				int(ship.x)+des[0],
 				int(ship.y)+des[1]
-			), config.min_select_dist, 1
+			), ship.ship.base['min_dist_sel'], 1
 		)
 	
 	# Draw Ship ----------------------------------
@@ -1351,6 +1439,8 @@ def redrawWindow():
 	
 	enemies_sorted = sorted(enemies, key=lambda x: enemies[x].exp)
 	
+	map_enemies_pos = []
+	
 	for other_player_id in enemies_sorted:
 		
 		if other_player_id == player.id: continue
@@ -1367,7 +1457,12 @@ def redrawWindow():
 			)
 			other_player_dist = round(other_player_dist, 2)
 		
+		if config.show['map_enemies']:
+			map_enemies_pos.append((other_player.x, other_player.y))
+		
 		if other_player_dist < config.limit_obj_dist:
+			if not config.show['map_enemies']:
+				map_enemies_pos.append((other_player.x, other_player.y))
 			drawShipAndData(other_player, (desX,desY), ROJO)
 	
 	# Draw Player: =====================================================
@@ -1390,22 +1485,28 @@ def redrawWindow():
 		text = renderText(text, font, BLANCO)
 		WIN.blit(text, (config.CENTER['x']-text.get_width()/2, 60))
 	
+	# Draw mini map ====================================================
+	
+	drawMinimap(map_enemies_pos)
+	
 	# Draw other info on main layer data: ==============================
 	
-	# ~ drawOtherInfo(game_time)
+	''# ~ drawOtherInfo(game_time)
+
+#=======================================================================
 
 def createWindow():
 	
 	global WIN
 	
 	# Make window start in top left hand corner
-	# os.environ['SDL_VIDEO_WINDOW_POS'] = f'{0},{30}'
 	
-	os.environ['SDL_VIDEO_CENTERED'] = '1'
+	os.environ['SDL_VIDEO_WINDOW_POS'] = f'{940},{375}'
+	# ~ os.environ['SDL_VIDEO_CENTERED'] = '1'
 	
 	# Setup pygame window
 	WIN = pygame.display.set_mode((config.W,config.H), HWSURFACE | DOUBLEBUF | RESIZABLE)
-	pygame.display.set_caption(f'{__project__} Online {__version__} - By: {__author__}')
+	pygame.display.set_caption(f'{__project__} Online v{__version__} - By: {__author__}')
 	
 	# Music
 	config.music.load(config.MUSIC['JNATHYN - Genesis'])
@@ -1488,25 +1589,21 @@ def close():
 main()
 
 #=======================================================================
-# Añadido el: 26/08/2021
-# + Actualizado el titulo de la ventana del juego.
-# + Agregados Mapas y sus limites de forma más dinámica.
-# + El ataque ya NO se mantiene activo cuando el enemigo se desconecta o selecciona otro objetivo.
-# + Arreglado bug en daño (el calculo daba ocasionalmente error con -1 punto en el daño, por los flotantes a enteros)
-# + Eliminado Score y agregado 'Experience (exp)' y 'Credits (creds)'
-# + Modificado Server para obtención de mejor manera los datos
-# + Agregado sistema de niveles en HP y SP más dinámico
-# + Corregida actualización de SP y HP en tiempo real en enemigos.
 # Añadido el: 28/08/2021
-# + Agregada Música de fondo al juego.
-# + Agregados los "Strangers" (NPCs) en el mapa. Estos son los seres que vagan por el
-#   espacio en sus naves, estos piratas o mercenarios te destruirán sin dudarlo.
-# + Mostrados Créditos y experiencia del jugador.
-# + Agregados Créditos y Experiencia al jugador al destruir Strangers.
-# + Respawn de Strangers al ser destruidos.
-# + Optimización en partes del código.
-# + Agregada curación automática de NPCs.
-# + Arreglado: último golpe no mostraba el daño causado.
+# + Arreglado: Deselecciona enemigos cuando son destruidos.
+# + Arreglado: El rango visible de objetos en pantalla se ha hecho dinámico para
+#   ajustar el rango (en el que se pueden ver los enemigos) al tamaño de la ventana.
+#   (Ahorro de memoria ocultando todo aquello que no se ve en pantalla)
+# + Agregado a la lista de armas: Plasma.
+# Añadido el: 29/08/2021
+# + Creado mini mapa con las posiciones exactas de cada jugador y Stranger.
+#   Puede cambiarse el tamaño modificando variables y se ajusta todo automáticamente.
+# + IA base de Strangers añadida. Vagan por el mapa con cierto grado de aleatoriedad y
+#   al estar cerca de un Jugador lo atacaran y perseguirán hasta que lo destruyan o se
+#   alejen 2 veces el mínimo rango de detección de objetivo.
+# Añadido el: 30/08/2021
+# + Desactivado el 'deltaTime'.
+# + Mejorada la IA de Strangers.
 # Bugs Detectados:
 # + Daño causado de enemigos a enemigos no carga correctamente.
 

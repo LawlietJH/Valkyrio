@@ -27,7 +27,7 @@ class Network:
 				self.client.send(pickle.dumps(data))
 			else:
 				self.client.send(str.encode(data))
-			reply = self.client.recv(kb*2)
+			reply = self.client.recv(kb*16)
 			# ~ print(len(reply))
 			try:
 				reply = pickle.loads(reply)
