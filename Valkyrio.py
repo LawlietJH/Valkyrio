@@ -3,7 +3,6 @@ import contextlib
 with contextlib.redirect_stdout(None):
 	import pygame
 from pygame.locals import *
-# ~ pygame.font.init()
 from Client import Network
 import atexit
 import random
@@ -15,13 +14,13 @@ import os
 
 __project__ = 'Valkyrio'
 __author__  = 'LawlietJH'
-__version__ = '0.0.5 (Alfa)'
+__version__ = '0.0.6 (Alfa)'
 
 __license__ = 'MIT'
 __status__  = 'Development'
 __framework__    = 'Pygame'
 __description__  = 'Juego 2D online con pygame inspirado en los juegos clásicos de destruir naves.'
-__version_date__ = '28/08/2021'
+__version_date__ = '06/09/2021'
 
 #=======================================================================
 #=======================================================================
@@ -86,7 +85,7 @@ class Utils:
 				seconds = '0' + seconds
 			return minutes + ':' + seconds
 	
-	def roundRect(self, surface, rect, color, rad=20, border=0, inside=(0,0,0,0)):
+	def roundRect(self, rect, color, rad=20, border=0, inside=(0,0,0,0)):
 		rect = pygame.Rect(rect)
 		zeroed_rect = rect.copy()
 		zeroed_rect.topleft = 0,0
@@ -96,7 +95,8 @@ class Utils:
 		if border:
 			zeroed_rect.inflate_ip(-2*border, -2*border)
 			self._renderRegion(image, zeroed_rect, inside, rad)
-		surface.blit(image, rect)
+		# ~ surface.blit(image, rect)
+		return (image, rect)
 	
 	def _renderRegion(self, image, rect, color, rad):
 		corners = rect.inflate(-2*rad, -2*rad)
@@ -104,6 +104,34 @@ class Utils:
 			pygame.draw.circle(image, color, getattr(corners,attribute), rad)
 		image.fill(color, rect.inflate(-2*rad,0))
 		image.fill(color, rect.inflate(0,-2*rad))
+	
+	@property
+	def curWinRect(self):
+		from ctypes import POINTER, WINFUNCTYPE, windll
+		from ctypes.wintypes import BOOL, HWND, RECT
+		
+		hwnd = pygame.display.get_wm_info()['window']
+		prototype = WINFUNCTYPE(BOOL, HWND, POINTER(RECT))
+		paramflags = (1, 'hwnd'), (2, 'lprect')
+		GetWindowRect = prototype(('GetWindowRect', windll.user32), paramflags)
+		rect = GetWindowRect(hwnd)
+		return [rect.left, rect.top, rect.right, rect.bottom]
+	
+	@property
+	def curWinSize(self):
+		info = pygame.display.Info()
+		return [info.current_w, info.current_h]
+	
+	def moveWindow(self, win_x, win_y, win_w, win_h):
+		from ctypes import windll
+		# ~ NOSIZE = 1
+		# ~ NOMOVE = 2
+		# ~ TOPMOST = -1
+		# ~ NOT_TOPMOST = -2
+		# ~ windll.user32.SetWindowPos(hwnd, NOT_TOPMOST, 0, 0, 0, 0, NOMOVE|NOSIZE)
+		# ~ w, h = pygame.display.get_surface().get_size()
+		hwnd = pygame.display.get_wm_info()['window']
+		windll.user32.MoveWindow(hwnd, win_x, win_y, win_w, win_h, False)
 
 
 class Config:
@@ -125,6 +153,10 @@ class Config:
 			'Rojo':         (255,  0,  0),
 			'Verde':        (  0,255,  0),
 			'Azul':         (  0,  0,255),
+			'Cyan':         (  0,180,200),
+			'Cyan Opaco':   (  0,130,140),
+			'Verde Claro':  (  0,210,  0),
+			'Verde Opaco':  (  0,150,  0),
 			
 			'HP':           (  0,210,  0),		# HP
 			'HP Opaco':     (  0,150,  0),		# HP 0
@@ -142,18 +174,26 @@ class Config:
 			'Inc-R 14': pygame.font.Font('font/Inconsolata-Regular.ttf', 14),
 			'Inc-R 16': pygame.font.Font('font/Inconsolata-Regular.ttf', 16),
 			'Inc-R 18': pygame.font.Font('font/Inconsolata-Regular.ttf', 18),
+			'Inc-R 20': pygame.font.Font('font/Inconsolata-Regular.ttf', 20),
+			'Inc-R 24': pygame.font.Font('font/Inconsolata-Regular.ttf', 24),
 			'Retro 12': pygame.font.Font('font/Retro Gaming.ttf', 12),
 			'Retro 14': pygame.font.Font('font/Retro Gaming.ttf', 14),
 			'Retro 16': pygame.font.Font('font/Retro Gaming.ttf', 16),
 			'Retro 18': pygame.font.Font('font/Retro Gaming.ttf', 18),
+			'Retro 20': pygame.font.Font('font/Retro Gaming.ttf', 20),
+			'Retro 24': pygame.font.Font('font/Retro Gaming.ttf', 24),
 			'Wendy 12': pygame.font.Font('font/Wendy.ttf', 12),
 			'Wendy 14': pygame.font.Font('font/Wendy.ttf', 14),
 			'Wendy 16': pygame.font.Font('font/Wendy.ttf', 16),
 			'Wendy 18': pygame.font.Font('font/Wendy.ttf', 18),
+			'Wendy 20': pygame.font.Font('font/Wendy.ttf', 20),
+			'Wendy 24': pygame.font.Font('font/Wendy.ttf', 24),
 			'Comic 12': pygame.font.SysFont('comicsans', 12),
 			'Comic 14': pygame.font.SysFont('comicsans', 14),
 			'Comic 16': pygame.font.SysFont('comicsans', 16),
-			'Comic 18': pygame.font.SysFont('comicsans', 18)
+			'Comic 18': pygame.font.SysFont('comicsans', 18),
+			'Comic 20': pygame.font.SysFont('comicsans', 20),
+			'Comic 24': pygame.font.SysFont('comicsans', 24)
 		}	# Diccionario de Fuentes.
 		
 		self.MUSIC = {
@@ -170,22 +210,23 @@ class Config:
 		# Configs: -----------------------------------------------------
 		
 		self.show = {
-			'name':        True,		# Show the name of the player and the name of the enemies
-			'speed':       True,		# Show player speed 
-			'fps':         True,		# Show fps
-			'pos':         True,		# Show player coordinates
-			'hp-sp':       True,		# Show player's HP and SP numbers
-			'weapon':      True,		# Displays the name and level of the weapon
-			'creds_exp':   True,		# Show accumulated damage
-			'acc_dmg':     False,		# Show accumulated damage
-			'map_enemies': True			# Show all enemies on minimap
+			'name':          True,		# Show the name of the player and the name of the enemies
+			'speed':         True,		# Show player speed 
+			'fps':           True,		# Show fps
+			'pos':           True,		# Show player coordinates
+			'hp-sp':         True,		# Show player's HP and SP numbers
+			'weapon':        True,		# Displays the name and level of the weapon
+			'creds_exp':     True,		# Show credits and experience
+			'acc_dmg':       True,		# Show accumulated damage
+			'map_enemies':   True,		# Show all enemies on minimap
+			'matrix_bg_fix': True		# Show background matrix fixed
 		}
 		
 		self.WEAPON = {
 			'Laser-mid': {
 				'path': 'img/weapons/laser.png',
 				'dmg': 100,			# Base damage
-				'inc': 1,			# Damage increment per level
+				'inc': 20,			# Damage increment per level
 				'ammo': 1000,		# Ammunition
 				'dist': 250,		# Minimum distance to attack enemies
 				'pct_sp': .7,		# Damage percentage to SP
@@ -194,7 +235,7 @@ class Config:
 			'Laser': {
 				'path': 'img/weapons/laser.png',
 				'dmg': 100,			# Base damage
-				'inc': 1,			# Damage increment per level
+				'inc': 10,			# Damage increment per level
 				'ammo': 1000,		# Ammunition
 				'dist': 400,		# Minimum distance to attack enemies
 				'pct_sp': .7,		# Damage percentage to SP
@@ -203,7 +244,7 @@ class Config:
 			'Plasma': {
 				'path': 'img/weapons/plasma.png',
 				'dmg': 1000,		# Base damage
-				'inc': 10,			# Damage increment per level
+				'inc': 50,			# Damage increment per level
 				'ammo': 100,		# Ammunition
 				'dist': 200,		# Minimum distance to attack enemies
 				'pct_sp': .6,		# Damage percentage to SP
@@ -219,6 +260,7 @@ class Config:
 				'path': 'img/Prometheus.png',
 				'weapon': 'Laser',
 				'min_dist_sel': 40,
+				'lvl':     1,
 				'speed':   100,
 				'spd_lvl': 0,
 				'hp':      self.baseHP,
@@ -228,19 +270,20 @@ class Config:
 		
 		self.STRANGERS = {
 			'Iken': {
-				'path':     'img/Prometheus.png',
-				'creds':    100,
-				'exp':      100,
+				'path':     'img/Iken (Epsilon).png',
+				'lvl':      1,
+				'creds':    2,
+				'exp':      10,
 				'min_dist': 350,
 				'min_dist_sel': 40,
-				'wpn_name': 'Laser',
-				'wpn_lvl':  100,
+				'wpn_name': 'Laser-mid',
+				'wpn_lvl':  0,
 				'speed':    50,
 				'spd_lvl':  0,
-				'lhp':      3,
-				'lsp':      3,
-				'hp':       self.baseHP,
-				'sp':       self.baseSP
+				'lhp':      1,
+				'lsp':      1,
+				'hp':       50,
+				'sp':       100
 			}
 		}
 		
@@ -250,18 +293,20 @@ class Config:
 			'Arkont': { 'x': 250, 'y': 250 }
 		}
 		
+		self.roundRects = {}							# Created round rects
+		
 		# Username settings
 		self.name_min_char_len = 1						# Minimum Character Length
 		self.name_max_char_len = 24						# Maximum Character Length
 		
 		# Data settings
-		self.BASE_SPEED = 50							# Base Speed of Ships
-		self.MAX_SPEED  = 500							# Max Speed of Ships
+		# ~ self.BASE_SPEED = 50							# Base Speed of Ships
+		self.MAX_SPD_LVL = 112						# Max Speed level of Ships
 		self.dtdiv = 10 * self.speedmul					# Detla Time Divide
 		self.posdiv = 30								# Divide the actual position of pixels X and Y to generate coordinates for the map
 		self.rad_dmg = 500								# Radioactive Damage 
-		# ~ self.min_select_dist = 32						# Minimum target selection distance (on pixels)
-		self.acc_dmg = False							#
+		self.open_menu = True							# Is open menu
+		self.pos_tab_menu = 1							# Position of menu tab
 		
 		# Counters
 		self.curr_frame = 0								# Current Frame
@@ -269,11 +314,16 @@ class Config:
 		# Background matrix settings
 		self.matrix_bg_sqr = 15							# Type: False = variable. Squares on Background. Example: 15x15
 		self.xy_pixels_sqr = 50							# Type: True = fixed.     X and Y pixels in squares on background
-		self.matrix_bg_fix = True						# Select Type: fixed or variable
 		
 		# Screen settings
 		# ~ self.RESOLUTION = (1280, 768)					# Resolution
-		self.RESOLUTION = (600, 450)					# Resolution
+		self.min_w = 600								# Minimum width resolution
+		self.min_h = 400								# Minimum height resolution
+		self.full_screen = False						# Full Screen
+		self.RESOLUTION = (720, 480)					# Resolution
+		self.screen_full_size = pygame.display.list_modes()[0]	# Resolution
+		self.windowed_pos = []							# Current window pos and size (Windowed)
+		self.init_time_windowed = 0
 		self.antialiasing = True						# Anti-aliasing is a method by which you can remove irregularities that appear in objects in PC games.
 		self.run = False								# Game Run
 		self.MFPS = 120									# Max Frames per Second
@@ -284,8 +334,8 @@ class Config:
 		
 		# Map settings
 		self.map_name = 'Zwem'
-		self.map_w = 120
-		self.map_h = 100
+		self.map_w = 150
+		self.map_h = 120
 	
 	@property
 	def map_x(self):
@@ -294,10 +344,6 @@ class Config:
 	@property
 	def map_y(self):
 		return self.H - self.map_h - 5
-	
-	# ~ @property
-	# ~ def min_select_dist(self):		# <----------- Continue
-		# ~ return 32
 	
 	@property
 	def CENTER(self):
@@ -366,7 +412,8 @@ class Ship:
 	def __init__(self, name, type_='Human'):
 		
 		self.name = name
-		if type_ == 'Human':
+		self.type = type_
+		if self.type == 'Human':
 			self.base = config.SHIP[name]
 			self.weapon = Weapon(self.base['weapon'])
 		else:
@@ -374,6 +421,7 @@ class Ship:
 			self.weapon = Weapon(self.base['wpn_name'])
 		self.destroyed = False
 		self.spd_lvl = self.base['spd_lvl']
+		self.lvl = self.base['lvl']
 		
 		# Health
 		self.hp  = 0					# Health points
@@ -399,13 +447,25 @@ class Ship:
 	
 	@property
 	def speed(self):
-		speed  = config.BASE_SPEED
-		speed += self.base['speed']
-		speed += self.spd_lvl
-		return speed
+		# Constant: 201.7857142857143 to 112 level = 150
+		#speed  = config.BASE_SPEED
+		#speed += self.base['speed']
+		#speed += self.spd_lvl
+		
+		# Aumento de velocidad en forma exponencial y=sqrt(200x+100) tomando en cuenta que
+		# el nivel x=112 y=150, todo basado en: y=sqrt(max_lvl*current_lvl)
+		init = 10
+		speed = self.base['speed']										# Velocidad base de la nave
+		val = math.sqrt(200*(self.spd_lvl+1)-100)-init					# Aumento de velocidad en forma de parabola, basado en: y = sqrt(200x+100)
+		add = init * (self.spd_lvl/(config.MAX_SPD_LVL))
+		speed += val+add
+		return int(speed)
 	
 	def speedLevelUP(self, lvl=1):
-		self.spd_lvl += lvl
+		if self.spd_lvl+lvl <= config.MAX_SPD_LVL:
+			self.spd_lvl += lvl
+		else:
+			self.spd_lvl = config.MAX_SPD_LVL
 	
 	def levelUpHP(self, lvl=1):					# Incrementa de nivel el HP
 		inc = self.base['hp'] * lvl
@@ -636,15 +696,16 @@ class Player:
 		
 		self.angle = player['ang']
 		self.attacking = player['atk']
-			
+		
 		self.ship_name = player['ship']['name']
 		if player['type'] == 'Human':
 			self.ship_path = config.SHIP[self.ship_name]['path']
 			self.ship = Ship(self.ship_name)
 		else:
-			self.ship_path = config.STRANGERS[self.ship_name]['path']
+			self.ship_path = player['ship']['path']
 			self.ship = Ship(self.ship_name, 'Stranger')
 		
+		self.ship.lvl = player['ship']['lvl']
 		self.ship.hp = 0
 		self.ship.sp = 0
 		self.ship.lhp = 0
@@ -659,10 +720,13 @@ class Player:
 		else:
 			self.ship.chp = self.ship.hp
 		
-		if player['ship']['csp'] <= self.ship.lsp:
+		if not player['ship']['csp'] == 0 \
+		and player['ship']['csp'] <= self.ship.lsp:
 			self.ship.csp = player['ship']['csp']
+			print(self.ship.csp, self.name)
 		else:
 			self.ship.csp = self.ship.sp
+			
 		
 		self.ship.destroyed = player['ship']['dtry']
 		self.ship.spd_lvl = player['ship']['spd_lvl']
@@ -706,13 +770,16 @@ class Player:
 			if player['type'] == 'Human':
 				self.ship_path = config.SHIP[self.ship_name]['path']
 			else:
-				self.ship_path = config.STRANGERS[self.ship_name]['path']
+				# ~ self.ship_path = config.STRANGERS[self.ship_name]['path']
+				self.ship_path = player['ship']['path']
 			self.ship = Ship(self.ship_name)
 		
 		# ~ if not player['ship']['hp'] == self.ship.hp:
 			# ~ self.ship.hp = player['ship']['hp']
 		# ~ if not player['ship']['sp'] == self.ship.sp:
 			# ~ self.ship.sp = player['ship']['sp']
+		
+		if not self.ship.lvl == player['ship']['lvl']: self.ship.lvl = player['ship']['lvl']
 		
 		# HP and SP ----------------------------------------
 		if not self.ship.lhp == player['ship']['lhp']:
@@ -815,8 +882,8 @@ def setAttack():
 				
 				if enemy.ship.chp > 0:
 					
-					if enemy.ship.chp < player.ship.weapon.dmg:
-						dmg = enemy.ship.chp
+					if enemy.ship.chp+enemy.ship.csp < player.ship.weapon.dmg:
+						dmg = enemy.ship.chp+enemy.ship.csp
 					else:
 						dmg = player.ship.weapon.dmg
 					
@@ -947,6 +1014,131 @@ def getUsername():
 
 # Events -----------------------------------------
 
+def keysDown(event):
+	
+	if event.key == pygame.K_ESCAPE:						# ESC - Close Game
+		config.run = False
+	
+	if event.key == pygame.K_LSHIFT:						# LShift- Attack
+		if player.selected['id'] >= 0:
+			player.attacking = not player.attacking
+	
+	# Hide/Show ---------------
+	if event.key == pygame.K_TAB:
+		config.open_menu = not config.open_menu
+	
+	if not config.open_menu:
+		if event.key == pygame.K_o:								# O - Hide/Show Names
+			config.show['name'] = not config.show['name']
+		if event.key == pygame.K_p:								# P - Hide/Show HP-SP
+			config.show['hp-sp'] = not config.show['hp-sp']
+	
+	#--------------------------
+	
+	if event.key == pygame.K_F11:
+		
+		if not config.full_screen:
+			config.full_screen = True
+			config.windowed_pos = utils.curWinRect[:2] + utils.curWinSize
+			WIN = pygame.display.set_mode(
+				config.screen_full_size,
+				HWSURFACE | DOUBLEBUF | FULLSCREEN
+			)
+		else:
+			config.init_time_windowed = time.perf_counter()
+			config.full_screen = False
+			win_x = config.windowed_pos[0]
+			win_y = config.windowed_pos[1]
+			win_w = config.windowed_pos[2]
+			win_h = config.windowed_pos[3]
+			
+			config.RESOLUTION = (win_w, win_h)
+			WIN = pygame.display.set_mode(
+				(win_w, win_h),
+				HWSURFACE | DOUBLEBUF | RESIZABLE
+			)
+			
+			add_w  = utils.curWinRect[2]
+			add_w += abs(utils.curWinRect[0])
+			add_w -= utils.curWinSize[0]
+			
+			add_h  = utils.curWinRect[3]
+			add_h += abs(utils.curWinRect[1])
+			add_h -= utils.curWinSize[1]
+			
+			utils.moveWindow(win_x, win_y, win_w+add_w, win_h+add_h)
+			WIN = pygame.display.set_mode(
+				config.RESOLUTION,
+				HWSURFACE | DOUBLEBUF | RESIZABLE
+			)
+			
+	#--------------------------
+	
+	if event.key == pygame.K_1:
+		if config.open_menu:
+			config.pos_tab_menu = 1
+	if event.key == pygame.K_2:
+		if config.open_menu:
+			config.pos_tab_menu = 2
+	if event.key == pygame.K_3:
+		if config.open_menu:
+			config.pos_tab_menu = 3
+	if event.key == pygame.K_4:
+		if config.open_menu:
+			config.pos_tab_menu = 4
+	if event.key == pygame.K_5:
+		if config.open_menu:
+			config.pos_tab_menu = 5
+	if event.key == pygame.K_6:
+		if config.open_menu:
+			config.pos_tab_menu = 6
+	if event.key == pygame.K_7:
+		if config.open_menu:
+			config.pos_tab_menu = 7
+	if event.key == pygame.K_8:
+		if config.open_menu:
+			config.pos_tab_menu = 8
+	if event.key == pygame.K_9:
+		if config.open_menu:
+			config.pos_tab_menu = 9
+	if event.key == pygame.K_0:
+		if config.open_menu:
+			config.pos_tab_menu = 0
+	
+	#--------------------------
+	if event.key == pygame.K_j:								# J - Speed level down
+		if player.ship.spd_lvl > 0:
+			cost = player.ship.spd_lvl
+			player.creds += cost
+			player.ship.speedLevelUP(-10)
+	if event.key == pygame.K_k:								# J - Speed level up
+		# ~ cost = (player.ship.spd_lvl+1)
+		# ~ if player.creds >= cost:
+			# ~ player.creds -= cost
+			player.ship.speedLevelUP(10)
+	
+	if event.key == pygame.K_u:								# U - HP level up
+		cost = (player.ship.lhp+1) * 10
+		if player.creds >= cost:
+			player.creds -= cost
+			player.ship.levelUpHP()
+	if event.key == pygame.K_i:								# I - SP level up
+		cost = (player.ship.lsp+1) * 10
+		if player.creds >= cost:
+			player.creds -= cost
+			if not player.ship.shield_unlocked:
+				player.ship.shield_unlocked = True
+			player.ship.levelUpSP()
+	
+	if event.key == pygame.K_h:								# H - Dmg level up
+		cost = (player.ship.weapon.lvl+1)
+		if player.creds >= cost:
+			player.creds -= cost
+			player.ship.weapon.levelUpDmg()
+	
+	if event.key == pygame.K_l:								# L - receive 100 Dmg
+		player.ship.recvDamage(100, pct_sp=1, mult=1)
+
 def detectEvents():
 	
 	for event in pygame.event.get():
@@ -957,49 +1149,34 @@ def detectEvents():
 			config.run = False
 		
 		if event.type == VIDEORESIZE:
-			config.RESOLUTION = event.dict['size']
+			if not config.RESOLUTION == event.size:
+				if not config.full_screen \
+				and time.perf_counter() - config.init_time_windowed > 1:
+					mw = config.min_w
+					mh = config.min_h
+					w, h = event.size
+					if w < mw: w = mw
+					if h < mh: h = mh
+					config.RESOLUTION = (w, h)
+					WIN = pygame.display.set_mode((w, h), HWSURFACE | DOUBLEBUF | RESIZABLE)
+				else:
+					config.RESOLUTION = event.size
 		
 		if event.type == pygame.KEYDOWN:
-			
-			if event.key == pygame.K_ESCAPE:
-				config.run = False
-			
-			if event.key == pygame.K_LSHIFT:
-				if player.selected['id'] >= 0:
-					player.attacking = not player.attacking
-			
-			if event.key == pygame.K_j:
-				player.ship.speedLevelUP(-10)
-			if event.key == pygame.K_k:
-				player.ship.speedLevelUP(10)
-			if event.key == pygame.K_o:
-				config.show['name'] = not config.show['name']
-			if event.key == pygame.K_p:
-				config.show['hp-sp'] = not config.show['hp-sp']
-			if event.key == pygame.K_u:
-				player.ship.levelUpHP()
-			if event.key == pygame.K_i:
-				if not player.ship.shield_unlocked:
-					player.ship.shield_unlocked = True
-				player.ship.levelUpSP()
-			
-			if event.key == pygame.K_h:
-				player.ship.weapon.levelUpDmg()
-			
-			if event.key == pygame.K_l:
-				player.ship.recvDamage(100, pct_sp=1, mult=1)
+			keysDown(event)
 		
 		# ~ if event.type == pygame.MOUSEMOTION:
 		
 		if event.type == pygame.MOUSEBUTTONDOWN:
-			players = selectEnemy(event)
-			if players: updateOtherPlayers(players)
+			if not config.open_menu:
+				players = selectEnemy(event)
+				if players: updateOtherPlayers(players)
 
 def movements(deltaTime):
 		
 		keys = pygame.key.get_pressed()
-		speed = player.ship.speed / 100
-		# ~ speed *= deltaTime
+		speed = player.ship.speed
+		speed *= deltaTime
 		
 		movements = False
 		degrees = 0
@@ -1099,7 +1276,172 @@ def updateOtherPlayers(players):
 			other_player.loadData(players)
 			enemies[id_] = other_player
 
+# Menu -------------------------------------------
+
+def drawMenuTab3():
+	pass
+
+def drawMenuTab2():
+	pass
+
+def drawMenuTabInfo(x, y, w, h):
+	
+	BLANCO = config.COLOR['Cyan']
+	VERDEC = config.COLOR['Verde Claro']
+	font  = config.FONT['Inc-R 16']
+	despX = 100			# Desplazamiento en X
+	despY = 30			# Desplazamiento en Y
+	
+	texts = [
+		('Experience',                         font, BLANCO),
+		(str(player.exp),                      font, VERDEC),
+		('Credits',                            font, BLANCO),
+		(str(player.creds),                    font, VERDEC),
+		('Weapon',                             font, BLANCO),
+		(f'{str(player.ship.weapon.name)} '\
+			f'({player.ship.weapon.lvl})',     font, VERDEC),
+		('Damage',                             font, BLANCO),
+		(str(player.ship.weapon.dmg),          font, VERDEC),
+		('Speed',                              font, BLANCO),
+		(str(player.ship.speed),               font, VERDEC),
+		('FPS',                                font, BLANCO),
+		(str(config.fps),                      font, VERDEC),
+		('Coords',                             font, BLANCO),
+		('({},{})'.format(
+				int(player.x/config.posdiv),
+				int(player.y/config.posdiv)
+			).ljust(11),                       font, VERDEC)
+	]
+	
+	# Draw background ----------------------------
+	positions = [
+		x,
+		y,
+		w,
+		h
+	]
+	
+	drawRoundrect('background tab', positions, config.COLOR['Verde F'],
+		3, 1, (*config.COLOR['Verde S'], 50)
+	)
+	
+	# Draw texts ---------------------------------
+	x = x+20
+	y = y+20
+	for i, text in enumerate(texts):
+		WIN.blit(renderText(*text), (x+(despX*(i%2)), y+(despY*(i//2))))
+	
+	#<--- Continue: Arreglar problema con los FPS por causa de los roundRects.
+
+def drawMenu():
+	
+	if config.open_menu:
+		
+		font14 = config.FONT['Inc-R 14']
+		font16 = config.FONT['Inc-R 16']
+		font18 = config.FONT['Inc-R 18']
+		font20 = config.FONT['Inc-R 20']
+		font24 = config.FONT['Inc-R 24']
+		
+		if   len(player.name) > 20: name_font = font14
+		elif len(player.name) > 16: name_font = font16
+		elif len(player.name) > 12: name_font = font18
+		elif len(player.name) > 8:  name_font = font20
+		else: name_font = font24
+		
+		BLANCO  = config.COLOR['Blanco']
+		CYAN    = config.COLOR['Cyan']
+		CYANOP  = config.COLOR['Cyan Opaco']
+		VERDE   = config.COLOR['Verde Claro']
+		VERDEOP = config.COLOR['Verde Opaco']
+		
+		# Draw background ----------------------------------------------
+		pos = { 'x': 20, 'y': 20, 'w': 20, 'h': 20 }
+		pos['w'] = config.W - pos['w'] - pos['x']
+		pos['h'] = config.H - pos['h'] - pos['y']
+		menu_pos = [ pos['x'], pos['y'], pos['w'], pos['h'] ]
+		
+		drawRoundrect('background menu', menu_pos, config.COLOR['Verde F'],
+			2, 2, (*config.COLOR['Verde S'], 180)
+		)
+		
+		# Draw tabs ----------------------------------------------------
+		despX = 180
+		tx, ty = menu_pos[0]+1, menu_pos[0]
+		tw, th = despX, 50
+		tabs = ['Information', 'Enhance', 'Constellations']
+		
+		pygame.draw.line(WIN, config.COLOR['Linea Bg'], 
+			(pos['x']+despX, pos['y']+2),
+			(pos['x']+despX, pos['h']+pos['y']-2),
+		2)
+		
+		text = f'{player.name}'
+		text = renderText(text, name_font, VERDE)
+		WIN.blit(text, (
+				tx + tw//2 - text.get_width()//2,
+				ty + th//2 - text.get_height()//2
+			)
+		)
+		
+		for i, tab in enumerate(tabs):
+			
+			i+=1
+			tab_y = ty + (th-1) * i
+			
+			if config.pos_tab_menu == i:
+				tr = 50
+				color = CYAN
+			else:
+				tr = 10
+				color = CYANOP
+			
+			tab_pos = [tx, tab_y, tw, th]
+			drawRoundrect('tab on menu', tab_pos, config.COLOR['Verde F'],
+				2, 1, (*CYANOP, tr)
+			)
+			
+			text = renderText(tab, font18, color, 'bold')
+			WIN.blit(text, (
+					tx    + tw//2 - text.get_width()//2,
+					tab_y + th//2 - text.get_height()//2
+				)
+			)
+		
+		# Draw tab Content ---------------------------------------------
+		
+		positions = [
+			tx+tw,
+			ty,
+			pos['w']-despX,
+			pos['h']
+		]
+		
+		if   config.pos_tab_menu == 1: drawMenuTabInfo(*positions)
+		# ~ elif config.pos_tab_menu == 2: drawMenuTab2(*positions)
+		# ~ elif config.pos_tab_menu == 3: drawMenuTab3(*positions)
+
 # Window -----------------------------------------
+
+def drawRoundrect(rect_name, pos, bcolor, ba, br, bgcolor):
+	# rect_name: nombre del componente
+	# pos: posiciones para el rectangulo
+	# bcolor: color del borde
+	# ba: anchura del borde
+	# br: redondeado del borde
+	# bgcolor: Color del fondo
+	# tr: Transparencia de 0 a 255
+	
+	if not config.roundRects.get(rect_name):
+		rr_img, rr_rect = utils.roundRect(pos, bcolor, ba, br, bgcolor)
+		config.roundRects[rect_name] = rr_img, rr_rect
+	else:
+		rr_img, rr_rect = config.roundRects.get(rect_name)
+		if not pos == rr_rect:
+			rr_img, rr_rect = utils.roundRect(pos, bcolor, ba, br, bgcolor)
+			config.roundRects[rect_name] = rr_img, rr_rect
+	
+	WIN.blit(rr_img, rr_rect)
 
 def renderText(text, font, color, _type=''):
 	
@@ -1116,25 +1458,38 @@ def renderText(text, font, color, _type=''):
 def drawMinimap(map_enemies_pos):
 	
 	# Minimap positions
-	position = [
+	minimap_pos = [
 		config.map_x, config.map_y,
 		config.map_w, config.map_h
 	]
+	x = (player.x/config.posdiv) / config.MAP[config.map_name]['x'] * config.map_w + config.map_x
+	y = (player.y/config.posdiv) / config.MAP[config.map_name]['y'] * config.map_h + config.map_y
+	
+	scr_pos = [
+		x-2-((config.CENTER['x']/config.posdiv) / config.MAP[config.map_name]['x'] * config.map_w),
+		y-2-((config.CENTER['y']/config.posdiv) / config.MAP[config.map_name]['y'] * config.map_h),
+		4+(config.W/config.posdiv) / config.MAP[config.map_name]['x'] * config.map_w,
+		4+(config.H/config.posdiv) / config.MAP[config.map_name]['y'] * config.map_h
+	]
+	
+	# Draw player screen on minimap
+	drawRoundrect('screen on minimap', scr_pos, config.COLOR['Verde S'],
+		2, 1, (*config.COLOR['Verde F'], 100)
+	)
 	
 	# Draw minimap background
-	utils.roundRect(WIN, position, config.COLOR['Verde F'],
+	drawRoundrect('minimap', minimap_pos, config.COLOR['Verde F'],
 		3, 1, (*config.COLOR['Verde S'], 150)
 	)
 	
 	# Draw player position on minimap
-	x = (player.x/config.posdiv) / config.MAP[config.map_name]['x'] * config.map_w + config.map_x
-	y = (player.y/config.posdiv) / config.MAP[config.map_name]['y'] * config.map_h + config.map_y
 	pygame.draw.circle(WIN, config.COLOR['Blanco'], (x,y), 1, 1)
 	
 	# Draw Map Name
 	font = config.FONT['Retro 14']
 	text = config.map_name
 	text = renderText(text, font, config.COLOR['Blanco'])
+	#<---- continue: Seleccionar nombre de mapa y mover el minimapa: config.map_x, config.map_y.
 	WIN.blit(text, (config.map_x, config.map_y-text.get_height()))
 	
 	# Draw enemies positions on minimap
@@ -1168,7 +1523,11 @@ def drawShipAndData(ship, des, name_color):
 	# Draw Name ----------------------------------
 	if config.show['name']:
 		font = config.FONT['Inc-R 18']
-		text = '-- [' + ship.name + '] --'
+		if ship.ship.type == 'Stranger':
+			text_lvl = f' ({ship.ship.lvl})'
+		else:
+			text_lvl = ''
+		text = f'-- [{ship.name}]{text_lvl} --'
 		text = renderText(text, font, name_color, 'bold')
 		WIN.blit(text, (
 				int(ship.x)+des[0] - text.get_width() /2,
@@ -1231,10 +1590,12 @@ def drawShipAndData(ship, des, name_color):
 			
 			if i == 1 and not ship.ship.shield_unlocked: continue
 			
+			name = 'HP' if i == 0 else 'SP'
+			
 			x = int(ship.x)+des[0] - width/2
 			y = int(ship.y)+des[1] - desp
 			position = [x, y, width, height]
-			utils.roundRect(WIN, position, config.COLOR['Verde F'],
+			drawRoundrect(name, position, config.COLOR['Verde F'],
 				2, 1, (*color, 50)
 			)
 			
@@ -1244,7 +1605,7 @@ def drawShipAndData(ship, des, name_color):
 				# ~ print(cp, '/', p)
 			pct = cp / p
 			position = [x, y, int(width*pct), height]
-			utils.roundRect(WIN, position, config.COLOR['Verde F'],
+			drawRoundrect(name+' bg', position, config.COLOR['Verde F'],
 				2, 1, (*color, 200)
 			)
 			
@@ -1305,7 +1666,7 @@ def drawShipAndData(ship, des, name_color):
 
 def drawMatrix(desX, desY):
 	
-	if config.matrix_bg_fix:
+	if config.show['matrix_bg_fix']:
 		x_r = config.xy_pixels_sqr
 		y_r = config.xy_pixels_sqr
 		linesW = int(config.W/x_r)
@@ -1416,7 +1777,7 @@ def drawConfigData():
 		despY*ltexts + 10
 	]
 	
-	utils.roundRect(WIN, positions, config.COLOR['Verde F'],
+	drawRoundrect('config data', positions, config.COLOR['Verde F'],
 		3, 1, (*config.COLOR['Verde S'], 50)
 	)
 	
@@ -1491,7 +1852,11 @@ def redrawWindow():
 	
 	# Draw other info on main layer data: ==============================
 	
-	''# ~ drawOtherInfo(game_time)
+	#drawOtherInfo(game_time)
+	
+	# Draw player menu: ================================================
+	
+	drawMenu()
 
 #=======================================================================
 
@@ -1501,7 +1866,7 @@ def createWindow():
 	
 	# Make window start in top left hand corner
 	
-	os.environ['SDL_VIDEO_WINDOW_POS'] = f'{940},{375}'
+	os.environ['SDL_VIDEO_WINDOW_POS'] = f'{10},{40}'
 	# ~ os.environ['SDL_VIDEO_CENTERED'] = '1'
 	
 	# Setup pygame window
@@ -1509,9 +1874,9 @@ def createWindow():
 	pygame.display.set_caption(f'{__project__} Online v{__version__} - By: {__author__}')
 	
 	# Music
-	config.music.load(config.MUSIC['JNATHYN - Genesis'])
-	config.music.set_volume(config.music_vol/100)
-	config.music.play(-1)
+	# ~ config.music.load(config.MUSIC['JNATHYN - Genesis'])
+	# ~ config.music.set_volume(config.music_vol/100)
+	''# ~ config.music.play(-1)
 
 #=======================================================================
 
@@ -1521,6 +1886,8 @@ def main():
 	
 	config.run = True
 	deltaTime = 1					# Delta Time
+	lastDeltaTime = 999
+
 	clock = pygame.time.Clock()
 	
 	# start by connecting to the network ---------
@@ -1553,10 +1920,6 @@ def main():
 		# Update Data:
 		updateOtherPlayers(players)							# Actualiza los datos de los enemigos
 		
-		# Events:
-		movements(deltaTime)								# Detecta los movimientos direccionales
-		detectEvents()										# Detecta los eventos de Mouse y Teclado
-		
 		# Actions:
 		lookAtEnemy()										# Si el enemigo esta seleccionado o el jugador es seleccionado, las naves giran apuntandose.
 		setAttack()											# Agrega el daño causado al enemigo
@@ -1565,6 +1928,12 @@ def main():
 		
 		# Draw Window:
 		redrawWindow()										# Redibuja todo (1 Fotograma)
+		
+		# Events:
+		if not deltaTime > lastDeltaTime*10:
+			movements(deltaTime)							# Detecta los movimientos direccionales
+		lastDeltaTime = deltaTime
+		detectEvents()										# Detecta los eventos de Mouse y Teclado
 		
 		# Update Window Data
 		pygame.display.update()								# Actualiza la ventana con todos los cambios
@@ -1589,23 +1958,48 @@ def close():
 main()
 
 #=======================================================================
-# Añadido el: 28/08/2021
-# + Arreglado: Deselecciona enemigos cuando son destruidos.
-# + Arreglado: El rango visible de objetos en pantalla se ha hecho dinámico para
-#   ajustar el rango (en el que se pueden ver los enemigos) al tamaño de la ventana.
-#   (Ahorro de memoria ocultando todo aquello que no se ve en pantalla)
-# + Agregado a la lista de armas: Plasma.
-# Añadido el: 29/08/2021
-# + Creado mini mapa con las posiciones exactas de cada jugador y Stranger.
-#   Puede cambiarse el tamaño modificando variables y se ajusta todo automáticamente.
-# + IA base de Strangers añadida. Vagan por el mapa con cierto grado de aleatoriedad y
-#   al estar cerca de un Jugador lo atacaran y perseguirán hasta que lo destruyan o se
-#   alejen 2 veces el mínimo rango de detección de objetivo.
 # Añadido el: 30/08/2021
-# + Desactivado el 'deltaTime'.
+# + Agregado un pequeño recuadro con el campo de visión del jugador en el minimapa.
 # + Mejorada la IA de Strangers.
+# 
+# Añadido el: 31/08/2021
+# + Agregados nivels de Strangers.
+# + Agregados Strangers tipo Iken por nivel (Épsilon 0~28, Delta 28~56, Gamma 56~84, Beta 84~112, Alfa 112+)
+# + Agregado costo de aumento de niveles (HP, SP, Dmg o Speed).
+# 
+# Añadido el: 01/09/2021
+# + Agregado Menú base del Jugador.
+# + Añadida Cambio a Pantalla completa o Modo Ventana con F11
+# 
+# Añadido el: 03/09/2021
+# + Agregada base de menú
+# 
+# Añadido el: 06/09/2021
+# + Solucionado problema de FPS con los roundRects
+# + Agregada función de parábola para le aumento de velocidad (inicial aumenta mucho, final aumento poco)
+# + Agregado nivel máximo de velocidad: 112
+# + Solucionado problema al cambiar de pantalla completa a modo ventana que no se podia modificar el tamaño de la ventana.
+# + Solucionado problema con el deltaTime, ahora los cambios en la ventana no interfieren con el movimiento al multiplicar la velocidad por el delta (al pausar la ventana el delta sigue aumentando su tiempo constantemente)
+# + Solucionado problema al causar daño al enemigo, al tener poca vida el enemigo el daño causado por el jugador disminuía y se hacia tedioso derrotarlos.
+# 
+# Para futuro desarrollo:
+# + [Ok] Agregar recuadro semitransparente para crear un menú
+# + [] Agregar el poder seleccionar el nombre del mapa y mover el minimapa.
+# + [] Agregar desplazamiento con clic en mini mapa
+# + [] Agregar Zona Segura
+# + [] Agregar tiempo de inmortalidad al iniciar sesión.
+# + [] Agregar subida de niveles a menú
+# + [] Agregar Loot random en mapa.
+# + [] Agregar Chat Global.
+# + [] Agregar sistema de constelaciones aleatorias para mejoras aleatorias (HP, SP, Dmg, Speed).
+# + [] Los otros personajes (NPCs y Otros jugadores) deberán seguir coordenadas para generar fluides con los movimientos en la pantalla del jugador.
+# + [] Agregar base de datos de usuarios
+# + [] Agregar inicio de sesión.
+# 
 # Bugs Detectados:
-# + Daño causado de enemigos a enemigos no carga correctamente.
-
-
-
+# + [Ok] Problema con los FPS a alta resolucion por causa de los roundRects en el menú.
+# + [Ok] Al cambiar de pantalla completa a modo ventana no se puede cambiar la resolución
+# + [Ok] Cuando la ventana sufre cambios el personaje salta de posicion si va en movimiento por multiplicar el delta por la velocidad
+# + [Ok] El daño causado al llegar a un minimo la vida del enemigo, el daño disminuye de forma extraña.
+# + [] El recuadro de pantalla en el minimapa, se desborda.
+# + [] Daño causado de enemigos a enemigos no carga correctamente.

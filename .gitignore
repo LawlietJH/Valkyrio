@@ -1,3 +1,10 @@
+# Otros
+otros/
+img/Pixel Arts/
+img/weapons/
+*-2.py
+*-big*.png
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

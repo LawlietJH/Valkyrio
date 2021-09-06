@@ -8,41 +8,10 @@ import json
 import math
 import time
 
+
 # ======================================================================
-# setup sockets
-S = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-S.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-# Set constants
-PORT = 57575
-HOST_NAME = socket.gethostname()
-SERVER_IP = socket.gethostbyname(HOST_NAME)
-
-# try to connect to server
-try:
-    S.bind((SERVER_IP, PORT))
-    # ~ S.bind(('127.0.0.1', PORT))
-except socket.error as e:
-    print(str(e))
-    print('[SERVER] Server could not start')
-    quit()
-
-# listen for connections
-S.listen()
-
-print(f'[SERVER] Server Started with local ip {SERVER_IP}')
-
-# dynamic variables
-players = {}
-connections = 0
-_id = -1
-start = False
-start_time = 0
-game_time = 'Starting Soon'
-kbyte = 1024
-
 # CLASSES ==============================================================
-
+# ======================================================================
 
 class Utils:
 	
@@ -135,7 +104,7 @@ class Config:
 		self.WEAPON = {
 			'Laser-mid': {
 				'path': 'img/weapons/laser.png',
-				'dmg': 100,			# Base damage
+				'dmg': 50,			# Base damage
 				'inc': 1,			# Damage increment per level
 				'ammo': 1000,		# Ammunition
 				'dist': 250,		# Minimum distance to attack enemies
@@ -179,19 +148,20 @@ class Config:
 		
 		self.STRANGERS = {
 			'Iken': {
-				'path':     'img/Artyk_Alfa.png',
-				'creds':    100,
-				'exp':      100,
+				'path':     'img/Iken (Epsilon).png',
+				'lvl':      1,
+				'creds':    2,
+				'exp':      10,
 				'min_dist': 350,
 				'min_dist_sel': 40,
 				'wpn_name': 'Laser-mid',
-				'wpn_lvl':  100,
+				'wpn_lvl':  0,
 				'speed':    50,
 				'spd_lvl':  0,
-				'lhp':      3,
-				'lsp':      3,
-				'hp':       self.baseHP,
-				'sp':       self.baseSP
+				'lhp':      1,
+				'lsp':      1,
+				'hp':       50,
+				'sp':       100
 			}
 		}
 		
@@ -219,6 +189,58 @@ class Config:
 		
 		# Map settings
 		self.map_name = 'Zwem'
+	
+	def getStranger(self, s_name, lvl):
+		
+		STRANGERS = {
+			'Iken': {
+				'path':     'img/{}.png',
+				'lvl':      1,
+				'creds':    1,
+				'exp':      10,
+				'min_dist': 350,
+				'min_dist_sel': 40,
+				'wpn_name': 'Laser-mid',
+				'wpn_lvl':  0,
+				'speed':    50,
+				'spd_lvl':  0,
+				'lhp':      1,
+				'lsp':      1,
+				'hp':       self.baseHP,
+				'sp':       self.baseSP
+			}
+		}
+		
+		imgs = {
+			'Iken': {
+				1: 'Iken (Alfa)',
+				2: 'Iken (Beta)',
+				3: 'Iken (Gamma)',
+				4: 'Iken (Delta)',
+				5: 'Iken (Epsilon)'
+			}
+		}
+		
+		if s_name == 'Iken':
+			if     0 <= lvl <=  28: s_type = 5
+			elif  28 <  lvl <=  56: s_type = 4
+			elif  56 <  lvl <=  84: s_type = 3
+			elif  84 <  lvl <= 112: s_type = 2
+			elif 112 <  lvl:        s_type = 1
+		
+		stranger = STRANGERS[s_name]
+		stranger['lvl']      = lvl
+		stranger['path']     = stranger['path'].format(imgs[s_name][s_type])
+		stranger['creds']   *= lvl
+		stranger['exp']     *= lvl
+		stranger['wpn_lvl']  = lvl-1
+		stranger['spd_lvl']  = lvl-1
+		stranger['lhp']      = lvl
+		stranger['lsp']      = lvl
+		# ~ stranger['lhp']     *= lvl//2 + lvl%2
+		# ~ stranger['lsp']     *= lvl//2
+		
+		return stranger
 	
 	@property
 	def CENTER(self):
@@ -660,15 +682,123 @@ class Stranger:
 		else:
 			self.attacking = False
 	
-	def randomMove(self, deltaTime):
+	def moveOnMap(self, speed):
+		
+		limitX = config.MAP[config.map_name]['x']
+		limitY = config.MAP[config.map_name]['y']
+		x = int(self.x/config.posdiv)
+		y = int(self.y/config.posdiv)
+		degrees = 0
+		
+		if self.wait:
+			if time.perf_counter() - self.t_init_move >= self.t_wait_move:
+				self.wait = False
+		else:
+			
+			if  10 < x < limitX-10\
+			and 10 < y < limitY-10:
+				
+				if self.dir in ['ru','ur']:
+					degrees = 0+45
+					mov_speed = utils.diagonal(speed, degrees)
+					self.x += mov_speed['x']
+					self.y -= mov_speed['y']
+				elif self.dir in ['lu','ul']:
+					degrees = 90+45
+					mov_speed_inv = utils.diagonal(speed, degrees, inv=True)
+					self.x -= mov_speed_inv['y']
+					self.y -= mov_speed_inv['x']
+				elif self.dir in ['ld','dl']:
+					degrees = 180+45
+					mov_speed = utils.diagonal(speed, degrees)
+					self.x -= mov_speed['x']
+					self.y += mov_speed['y']
+				elif self.dir in ['rd','dr']:
+					degrees = 270+45
+					mov_speed_inv = utils.diagonal(speed, degrees, inv=True)
+					self.x += mov_speed_inv['y']
+					self.y += mov_speed_inv['x']
+				elif 'r' in self.dir:
+					degrees = 0
+					self.x += speed
+				elif 'u' in self.dir:
+					degrees = 90
+					self.y -= speed
+				elif 'l' in self.dir:
+					degrees = 180
+					self.x -= speed
+				elif 'd' in self.dir:
+					degrees = 270
+					self.y += speed
+				
+				self.angle = degrees
+				
+				if random.random() < .001:
+					self.dir = random.choice(['r','u','l','d','ru','ul','ld','dr'])
+					self.wait = True
+					self.t_wait_move = random.randint(1,5)
+					self.t_init_move = time.perf_counter()
+				
+			else:
+				
+				# ~ self.wait = True
+				# ~ self.t_wait_move = random.randint(1,3)
+				# ~ self.t_init_move = time.perf_counter()
+				
+				if x <= 10:
+					self.x += speed
+					self.dir = random.choice(['r','ru','rd'])
+				elif x >= limitX-10:
+					self.x -= speed
+					self.dir = random.choice(['l','lu','ld'])
+				elif y <= 10:
+					self.y += speed
+					self.dir = random.choice(['d','dl','dr'])
+				elif y >= limitY-10:
+					self.y -= speed
+					self.dir = random.choice(['u','ul','ur'])
+	
+	def followAndAttack(self, speed, enemy):
 		
 		x = int(self.x/config.posdiv)
 		y = int(self.y/config.posdiv)
-		limitX = config.MAP[config.map_name]['x']
-		limitY = config.MAP[config.map_name]['y']
+		ex = int(enemy['x']/config.posdiv)
+		ey = int(enemy['y']/config.posdiv)
+		positions = ((self.x,self.y),(enemy['x'],enemy['y']))
+		
+		self.angle = -utils.getAngle(*positions)
+		dist_px = int(utils.euclideanDistance(*positions))
+		
+		mov_speed = utils.diagonal(speed, self.angle)
+		mov_speed_inv = utils.diagonal(speed, self.angle, inv=True)
+		
+		if dist_px >= 200:
+			
+			if x > ex and y < ey:
+				self.x -= mov_speed['x']
+				self.y += mov_speed['y']
+			elif x < ex and y < ey:
+				self.x += mov_speed_inv['x']
+				self.y += mov_speed_inv['y']
+			elif x < ex and y > ey:
+				self.x += mov_speed['x']
+				self.y -= mov_speed['y']
+			elif x > ex and y > ey:
+				self.x -= mov_speed_inv['x']
+				self.y -= mov_speed_inv['y']
+			elif x > ex and y == ey:
+				self.x -= speed
+			elif x < ex and y == ey:
+				self.x += speed
+			elif y > ey and x == ex:
+				self.y -= speed
+			elif y < ey and x == ex:
+				self.y += speed
+	
+	def randomMove(self, deltaTime):
+		
 		speed = self.ship.speed / 100
 		# ~ speed *= deltaTime
-		degrees = 0
 		
 		if not self.dir:
 			# ~ print(x, y, self.ship.speed, speed)
@@ -692,130 +822,47 @@ class Stranger:
 				self.attacking = False
 				return
 			
-			ex = int(enemy['x']/config.posdiv)
-			ey = int(enemy['y']/config.posdiv)
+			self.followAndAttack(speed, enemy)
 			
-			positions = ((self.x,self.y),(enemy['x'],enemy['y']))
-			dist_px = int(utils.euclideanDistance(*positions))
-			self.angle = -utils.getAngle(*positions)
-			
-			mov_speed = utils.diagonal(speed, self.angle)
-			mov_speed_inv = utils.diagonal(speed, self.angle, inv=True)
-			
-			if dist_px >= 200:
-				if x > ex and y < ey:
-					self.x -= mov_speed['x']
-					self.y += mov_speed['y']
-				elif x < ex and y < ey:
-					self.x += mov_speed_inv['x']
-					self.y += mov_speed_inv['y']
-				elif x < ex and y > ey:
-					self.x += mov_speed['x']
-					self.y -= mov_speed['y']
-				elif x > ex and y > ey:
-					self.x -= mov_speed_inv['x']
-					self.y -= mov_speed_inv['y']
-				elif x > ex and y == ey:
-					self.x -= mov_speed['x']
-				elif x < ex and y == ey:
-					self.x += mov_speed['x']
-				elif y > ey and x == ex:
-					self.y -= mov_speed_inv['y']
-				elif y < ey and x == ex:
-					self.y += mov_speed_inv['y']
-				
-		else:
-			
-			if self.wait:
-				if time.perf_counter() - self.t_init_move >= self.t_wait_move:
-					self.wait = False
-			else:
-				
-				if  10 < x < limitX-10\
-				and 10 < y < limitY-10:
-					
-					if 'ru' in self.dir:
-						degrees = 0+45
-						mov_speed = utils.diagonal(speed, degrees)
-						self.x += mov_speed['x']
-						self.y -= mov_speed['y']
-					elif 'lu' in self.dir:
-						degrees = 90+45
-						mov_speed_inv = utils.diagonal(speed, degrees, inv=True)
-						self.x -= mov_speed_inv['y']
-						self.y -= mov_speed_inv['x']
-					elif 'ld' in self.dir:
-						degrees = 180+45
-						mov_speed = utils.diagonal(speed, degrees)
-						self.x -= mov_speed['x']
-						self.y += mov_speed['y']
-					elif 'rd' in self.dir:
-						degrees = 270+45
-						mov_speed_inv = utils.diagonal(speed, degrees, inv=True)
-						self.x += mov_speed_inv['y']
-						self.y += mov_speed_inv['x']
-					elif 'r' in self.dir:
-						degrees = 0
-						mov_speed = utils.diagonal(speed, degrees)
-						self.x += mov_speed['x']
-					elif 'u' in self.dir:
-						degrees = 90
-						mov_speed = utils.diagonal(speed, degrees)
-						self.y -= mov_speed['y']
-					elif 'l' in self.dir:
-						degrees = 180
-						mov_speed_inv = utils.diagonal(speed, degrees, inv=True)
-						self.x -= mov_speed_inv['x']
-					elif 'd' in self.dir:
-						degrees = 270
-						mov_speed_inv = utils.diagonal(speed, degrees, inv=True)
-						self.y += mov_speed_inv['y']
-					
-					self.angle = degrees
-					
-					if random.random() < .001:
-						self.dir = random.choice(['r','u','l','d','ru','ul','ld','dr'])
-						self.wait = True
-						self.t_wait_move = random.randint(1,3)
-						self.t_init_move = time.perf_counter()
-					
-				else:
-					
-					if x <= 10:
-						self.x += speed
-						# ~ self.dir = random.choice(['r','u','d','ru','rd'])
-						self.dir = random.choice(['r','ru','rd'])
-					elif x >= limitX-10:
-						self.x -= speed
-						# ~ self.dir = random.choice(['l','u','d','lu','ld'])
-						self.dir = random.choice(['l','lu','ld'])
-					elif y <= 10:
-						self.y += speed
-						# ~ self.dir = random.choice(['d','l','r','dl','dr'])
-						self.dir = random.choice(['d','dl','dr'])
-					elif y >= limitY-10:
-						self.y -= speed
-						# ~ self.dir = random.choice(['u','l','r','ul','ur'])
-						self.dir = random.choice(['u','ul','ur'])
-					
-					self.wait = True
-					self.t_wait_move = random.randint(1,3)
-					self.t_init_move = time.perf_counter()
-		
+		else: self.moveOnMap(speed)
+
 #----------------
 
 utils  = Utils()
 config = Config()
 
-# STRANGERS ============================================================
+# ======================================================================
+# FUNCTIONS ============================================================
+# ======================================================================
+
+# ~ current_levels = {
+	# ~ 'Iken': []
+# ~ }
 
 def threaded_bot(stranger_id, stranger_name):
 	
-	global connections, players, game_time, _id
+	global connections, players, game_time, _id #, current_levels
+	
+	# ~ while True:
+		
+		# ~ r = random.randrange(1,224)
+		
+		# ~ if stranger_name == 'Iken':
+			# ~ if     0 <= r <=  28: s_type = 5
+			# ~ elif  28 <  r <=  56: s_type = 4
+			# ~ elif  56 <  r <=  84: s_type = 3
+			# ~ elif  84 <  r <= 112: s_type = 2
+			# ~ elif 112 <  r:        s_type = 1
+		
+		# ~ current_levels[stranger_name].append(r)
 	
 	while True:
 		
-		stranger_info = config.STRANGERS[stranger_name]
+		# ~ stranger_info = config.STRANGERS[stranger_name]
+		
+		r = random.randrange(1,7)
+		stranger_info = config.getStranger(stranger_name, r)
+		
 		map_limits = config.MAP[config.map_name]
 		FPS = 240
 		
@@ -830,10 +877,12 @@ def threaded_bot(stranger_id, stranger_name):
 			'atk':   False,										# Attacking
 			'ship': {
 				'name':    stranger_name,						# Ship Name
+				'path':    stranger_info['path'],				# Path of ship design
+				'lvl':     stranger_info['lvl'],				# Stranger level
 				'lhp':     stranger_info['lhp'],				# Health Points
 				'lsp':     stranger_info['lsp'],				# Shield Points
-				'chp':     stranger_info['lhp']*stranger_info['hp'],		# Current Health Points
-				'csp':     stranger_info['lsp']*stranger_info['sp'],		# Current Shield Points
+				'chp':     stranger_info['lhp']*stranger_info['hp'],	# Current Health Points
+				'csp':     stranger_info['lsp']*stranger_info['sp'],	# Current Shield Points
 				's_unlkd': True,								# Shield Unlocked
 				'dtry':    False,								# Destroyed
 				'spd_lvl': stranger_info['spd_lvl'],			# Speed level
@@ -891,13 +940,6 @@ def threaded_bot(stranger_id, stranger_name):
 		stranger_id = _id
 
 
-for i in range(20):
-	_id += 1
-	thread.start_new_thread(threaded_bot, (_id, 'Iken'))
-	time.sleep(.01)
-
-# FUNCTIONS ============================================================
-
 def threaded_client(conn, _id):
 	
 	global connections, players, game_time, start
@@ -920,12 +962,13 @@ def threaded_client(conn, _id):
 		'ang':   0,						# Angle
 		'atk':   False,					# Attacking
 		'ship': {
+			'lvl':     0,
 			'name':    'Prometheus',	# Ship Name
-			'lhp':     10,				# Health Points
-			'lsp':     0,				# Shield Points
+			'lhp':     20,				# Health Points
+			'lsp':     20,				# Shield Points
 			'chp':     0,				# Current Health Points
 			'csp':     0,				# Current Shield Points
-			's_unlkd': False,			# Shield Unlocked
+			's_unlkd': True,			# Shield Unlocked
 			'dtry':    False,			# Destroyed
 			'spd_lvl': 0,				# Speed
 			'weapon': {
@@ -1057,6 +1100,48 @@ def threaded_client(conn, _id):
 def close():
 	time.sleep(1)
 
+# ======================================================================
+# ======================================================================
+# ======================================================================
+
+# setup sockets
+S = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+S.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+# Set constants
+PORT = 57575
+HOST_NAME = socket.gethostname()
+SERVER_IP = socket.gethostbyname(HOST_NAME)
+
+# try to connect to server
+try:
+    # ~ S.bind((SERVER_IP, PORT))
+    S.bind(('127.0.0.1', PORT))
+except socket.error as e:
+    print(str(e))
+    print('[SERVER] Server could not start')
+    quit()
+
+# listen for connections
+S.listen()
+
+print(f'[SERVER] Server Started with local ip {SERVER_IP}')
+
+# dynamic variables
+players = {}
+connections = 0
+_id = -1
+start = False
+start_time = 0
+game_time = 'Starting Soon'
+kbyte = 1024
+
+# STRANGERS ============================================================
+
+for i in range(26):
+	_id += 1
+	thread.start_new_thread(threaded_bot, (_id, 'Iken'))
+	time.sleep(.01)
 
 # MAINLOOP =============================================================
 
