@@ -18,30 +18,31 @@ class Utils:
 	def __init__(self):
 		self.init_time = time.perf_counter()
 	
-	def perSecond(self, t=1):
-		if time.perf_counter() - self.init_time >= t:
-			self.init_time = time.perf_counter()
-			return True
-		return False
-	
-	def cos(self, deg=45, dec=None):
+	def cos(self, deg=45):
 		rad = math.radians(deg)
-		cos = math.cos(rad)
-		if dec: return round(cos, dec)
-		else: return cos
+		return math.cos(rad)
 	
-	def sin(self, deg=45, dec=None):
+	def sin(self, deg=45):
 		rad = math.radians(deg)
-		sin = math.sin(rad)
-		if dec: return round(sin, dec)
-		else: return sin
+		return math.sin(rad)
 	
-	def diagonal(self, h, deg=45, inv=False, dec=None):
+	def diagonal(self, h, deg=45, rounded=True):
+		
+		inv = True if deg//90 in [1,-1,3,-3] else False 
 		deg = deg%90
-		ca = h * self.cos(deg, dec)
-		co = h * self.sin(deg, dec)
+		
 		if inv:
-			return {'x': co, 'y': ca}
+			co = h * self.cos(deg)
+			ca = h * self.sin(deg)
+		else:
+			ca = h * self.cos(deg)
+			co = h * self.sin(deg)
+		
+		if rounded:
+			if str(rounded).isnumeric():
+				return {'x': round(ca, rounded), 'y': round(co, rounded)}
+			else:
+				return {'x': round(ca, 2), 'y': round(co, 2)}
 		else:
 			return {'x': ca, 'y': co}
 	
@@ -64,35 +65,6 @@ class Utils:
 		atan2 = math.atan2(Y, X)
 		angle = math.degrees(atan2)
 		return angle
-	
-	def convertTime(self, t):
-		if type(t) == str: return t
-		if int(t) < 60: return str(t) + 's'
-		else:
-			minutes = str(t // 60)
-			seconds = str(t % 60)
-			if int(seconds) < 10:
-				seconds = '0' + seconds
-			return minutes + ':' + seconds
-	
-	def roundRect(self, surface, rect, color, rad=20, border=0, inside=(0,0,0,0)):
-		rect = pygame.Rect(rect)
-		zeroed_rect = rect.copy()
-		zeroed_rect.topleft = 0,0
-		image = pygame.Surface(rect.size).convert_alpha()
-		image.fill((0,0,0,0))
-		self._renderRegion(image, zeroed_rect, color, rad)
-		if border:
-			zeroed_rect.inflate_ip(-2*border, -2*border)
-			self._renderRegion(image, zeroed_rect, inside, rad)
-		surface.blit(image, rect)
-	
-	def _renderRegion(self, image, rect, color, rad):
-		corners = rect.inflate(-2*rad, -2*rad)
-		for attribute in ('topleft', 'topright', 'bottomleft', 'bottomright'):
-			pygame.draw.circle(image, color, getattr(corners,attribute), rad)
-		image.fill(color, rect.inflate(-2*rad,0))
-		image.fill(color, rect.inflate(0,-2*rad))
 
 
 class Config:
@@ -105,7 +77,7 @@ class Config:
 			'Laser-mid': {
 				'path': 'img/weapons/laser.png',
 				'dmg': 50,			# Base damage
-				'inc': 1,			# Damage increment per level
+				'inc': 5,			# Damage increment per level
 				'ammo': 1000,		# Ammunition
 				'dist': 250,		# Minimum distance to attack enemies
 				'pct_sp': .7,		# Damage percentage to SP
@@ -114,7 +86,7 @@ class Config:
 			'Laser': {
 				'path': 'img/weapons/laser.png',
 				'dmg': 100,			# Base damage
-				'inc': 1,			# Damage increment per level
+				'inc': 10,			# Damage increment per level
 				'ammo': 1000,		# Ammunition
 				'dist': 400,		# Minimum distance to attack enemies
 				'pct_sp': .7,		# Damage percentage to SP
@@ -123,7 +95,7 @@ class Config:
 			'Plasma': {
 				'path': 'img/weapons/plasma.png',
 				'dmg': 1000,		# Base damage
-				'inc': 10,			# Damage increment per level
+				'inc': 50,			# Damage increment per level
 				'ammo': 100,		# Ammunition
 				'dist': 200,		# Minimum distance to attack enemies
 				'pct_sp': .6,		# Damage percentage to SP
@@ -139,6 +111,7 @@ class Config:
 				'path': 'img/Prometheus.png',
 				'weapon': 'Laser',
 				'min_dist_sel': 40,
+				'lvl':     1,
 				'speed':   100,
 				'spd_lvl': 0,
 				'hp':      self.baseHP,
@@ -166,18 +139,16 @@ class Config:
 		}
 		
 		self.MAP = {
-			'Zwem':   { 'x': 150, 'y': 150 },
-			'Karont': { 'x': 200, 'y': 200 },
-			'Arkont': { 'x': 250, 'y': 250 }
+			'Zwem':   { 'x': 200, 'y': 150 },
+			'Karont': { 'x': 250, 'y': 200 },
+			'Arkont': { 'x': 300, 'y': 250 }
 		}
 		
 		# Data settings
-		self.BASE_SPEED = 50							# Base Speed of Ships
-		self.MAX_SPEED  = 500							# Max Speed of Ships
+		self.MAX_SPD_LVL  = 112							# Max Speed of Ships
 		self.dtdiv = 10 * self.speedmul					# Detla Time Divide
 		self.posdiv = 30								# Divide the actual position of pixels X and Y to generate coordinates for the map
-		self.rad_dmg = 300								# Radioactive Damage 
-		# ~ self.min_select_dist = 32						# Minimum target selection distance (on pixels)
+		self.rad_dmg = 500								# Radioactive Damage 
 		
 		# Counters
 		self.curr_frame = 0								# Current Frame
@@ -194,7 +165,8 @@ class Config:
 		
 		STRANGERS = {
 			'Iken': {
-				'path':     'img/{}.png',
+				'type':     '',
+				'path':     'img/Iken ({}).png',
 				'lvl':      1,
 				'creds':    1,
 				'exp':      10,
@@ -211,26 +183,27 @@ class Config:
 			}
 		}
 		
-		imgs = {
+		stgr_type = {
 			'Iken': {
-				1: 'Iken (Alfa)',
-				2: 'Iken (Beta)',
-				3: 'Iken (Gamma)',
-				4: 'Iken (Delta)',
-				5: 'Iken (Epsilon)'
+				1: 'Alfa',
+				2: 'Beta',
+				3: 'Gamma',
+				4: 'Delta',
+				5: 'Epsilon'
 			}
 		}
 		
 		if s_name == 'Iken':
-			if     0 <= lvl <=  28: s_type = 5
-			elif  28 <  lvl <=  56: s_type = 4
-			elif  56 <  lvl <=  84: s_type = 3
-			elif  84 <  lvl <= 112: s_type = 2
-			elif 112 <  lvl:        s_type = 1
+			if     0 <= lvl <  28: s_type = 5
+			elif  28 <= lvl <  56: s_type = 4
+			elif  56 <= lvl <  84: s_type = 3
+			elif  84 <= lvl < 112: s_type = 2
+			elif 112 <= lvl:       s_type = 1
 		
 		stranger = STRANGERS[s_name]
+		stranger['type']     = stgr_type[s_name][s_type]
 		stranger['lvl']      = lvl
-		stranger['path']     = stranger['path'].format(imgs[s_name][s_type])
+		stranger['path']     = stranger['path'].format(stranger['type'])
 		stranger['creds']   *= lvl
 		stranger['exp']     *= lvl
 		stranger['wpn_lvl']  = lvl-1
@@ -292,7 +265,8 @@ class Ship:
 	def __init__(self, name, type_='Human'):
 		
 		self.name = name
-		if type_ == 'Human':
+		self.type = type_
+		if self.type == 'Human':
 			self.base = config.SHIP[name]
 			self.weapon = Weapon(self.base['weapon'])
 		else:
@@ -300,6 +274,7 @@ class Ship:
 			self.weapon = Weapon(self.base['wpn_name'])
 		self.destroyed = False
 		self.spd_lvl = self.base['spd_lvl']
+		self.lvl = self.base['lvl']
 		
 		# Health
 		self.hp  = 0					# Health points
@@ -320,18 +295,37 @@ class Ship:
 		
 		self.timeOnBorder = 0
 		
+		# 0.0~1.0: Percentage of resistance to damage in the radiative zone
+		self.pct_res_dmg_rad = self.getPctResDmgRad()
+		
 		self.damageRecv = []
 		self.healthRecv = []
 	
 	@property
 	def speed(self):
-		speed  = config.BASE_SPEED
-		speed += self.base['speed']
-		speed += self.spd_lvl
-		return speed
+		# Aumento de velocidad en forma exponencial y=sqrt(200x+100) tomando en cuenta que
+		# el nivel x=112 y=150, todo basado en: y=sqrt(max_lvl*current_lvl)
+		init = 10
+		speed = self.base['speed']										# Velocidad base de la nave
+		val = math.sqrt(200*(self.spd_lvl+1)-100)-init					# Aumento de velocidad en forma de parabola, basado en: y = sqrt(200x+100)
+		add = init * (self.spd_lvl/(config.MAX_SPD_LVL))
+		speed += val+add
+		return int(speed)
+	
+	def getPctResDmgRad(self):	# Control del nivel de radiacion
+		if self.lvl >= 28:
+			if self.lvl//100 > 1:
+				return 1
+			else:
+				return self.lvl//100
+		else:
+			return 1
 	
 	def speedLevelUP(self, lvl=1):
-		self.spd_lvl += lvl
+		if self.spd_lvl+lvl <= config.MAX_SPD_LVL:
+			self.spd_lvl += lvl
+		else:
+			self.spd_lvl = config.MAX_SPD_LVL
 	
 	def levelUpHP(self, lvl=1):					# Incrementa de nivel el HP
 		inc = self.base['hp'] * lvl
@@ -521,8 +515,6 @@ class Stranger:
 				data['dmginfo']['time']
 			])
 		
-		# ~ time.sleep(.01)
-		
 		players[self.id]['dmginfo'] = {}
 		
 		return data
@@ -546,6 +538,7 @@ class Stranger:
 		self.ship_name = stranger['ship']['name']
 		self.ship = Ship(self.ship_name, 'Stranger')
 		
+		self.ship.lvl = stranger['ship']['lvl']
 		self.ship.hp = 0
 		self.ship.sp = 0
 		self.ship.lhp = 0
@@ -560,7 +553,8 @@ class Stranger:
 		else:
 			self.ship.chp = self.ship.hp
 		
-		if stranger['ship']['csp'] <= self.ship.lsp:
+		if not stranger['ship']['csp'] == 0 \
+		and stranger['ship']['csp'] <= self.ship.lsp:
 			self.ship.csp = stranger['ship']['csp']
 		else:
 			self.ship.csp = self.ship.sp
@@ -579,7 +573,7 @@ class Stranger:
 				self.ship.timeOnBorder = time.perf_counter()
 			if time.perf_counter() - self.ship.timeOnBorder > 2:
 				self.ship.timeOnBorder = time.perf_counter()
-				self.ship.recvDamage(config.rad_dmg, pct_sp=0)
+				self.ship.recvDamage(config.rad_dmg*(1-self.ship.pct_res_dmg_rad), pct_sp=0)
 		else:
 			if self.ship.timeOnBorder > 0:
 				self.ship.timeOnBorder = 0
@@ -609,7 +603,6 @@ class Stranger:
 		
 		# Draw Laser and damage on enemies:
 		if self.selected['id'] >= 0 and self.attacking:
-			# ~ print(self.selected['dist'], self.ship.weapon.dist)
 			if self.selected['dist'] < self.ship.weapon.dist:
 				
 				id_ = self.selected['id']
@@ -660,8 +653,6 @@ class Stranger:
 		
 		dist = round(utils.euclideanDistance((pposX,pposY), selected_pos), 2)
 		
-		# ~ print(dist, self.ship.base['min_dist'])
-		
 		if self.primary_atk:
 			self.selected['name'] = data['name']
 			self.selected['id']   = p_id
@@ -705,9 +696,9 @@ class Stranger:
 					self.y -= mov_speed['y']
 				elif self.dir in ['lu','ul']:
 					degrees = 90+45
-					mov_speed_inv = utils.diagonal(speed, degrees, inv=True)
-					self.x -= mov_speed_inv['y']
-					self.y -= mov_speed_inv['x']
+					mov_speed = utils.diagonal(speed, degrees)
+					self.x -= mov_speed['y']
+					self.y -= mov_speed['x']
 				elif self.dir in ['ld','dl']:
 					degrees = 180+45
 					mov_speed = utils.diagonal(speed, degrees)
@@ -715,9 +706,9 @@ class Stranger:
 					self.y += mov_speed['y']
 				elif self.dir in ['rd','dr']:
 					degrees = 270+45
-					mov_speed_inv = utils.diagonal(speed, degrees, inv=True)
-					self.x += mov_speed_inv['y']
-					self.y += mov_speed_inv['x']
+					mov_speed = utils.diagonal(speed, degrees)
+					self.x += mov_speed['y']
+					self.y += mov_speed['x']
 				elif 'r' in self.dir:
 					degrees = 0
 					self.x += speed
@@ -770,7 +761,6 @@ class Stranger:
 		dist_px = int(utils.euclideanDistance(*positions))
 		
 		mov_speed = utils.diagonal(speed, self.angle)
-		mov_speed_inv = utils.diagonal(speed, self.angle, inv=True)
 		
 		if dist_px >= 200:
 			
@@ -778,14 +768,14 @@ class Stranger:
 				self.x -= mov_speed['x']
 				self.y += mov_speed['y']
 			elif x < ex and y < ey:
-				self.x += mov_speed_inv['x']
-				self.y += mov_speed_inv['y']
+				self.x += mov_speed['x']
+				self.y += mov_speed['y']
 			elif x < ex and y > ey:
 				self.x += mov_speed['x']
 				self.y -= mov_speed['y']
 			elif x > ex and y > ey:
-				self.x -= mov_speed_inv['x']
-				self.y -= mov_speed_inv['y']
+				self.x -= mov_speed['x']
+				self.y -= mov_speed['y']
 			elif x > ex and y == ey:
 				self.x -= speed
 			elif x < ex and y == ey:
@@ -801,7 +791,6 @@ class Stranger:
 		# ~ speed *= deltaTime
 		
 		if not self.dir:
-			# ~ print(x, y, self.ship.speed, speed)
 			self.wait = False
 			self.dir = random.choice(['r','u','l','d','ru','ul','ld','dr'])
 		
@@ -826,22 +815,37 @@ class Stranger:
 			
 		else: self.moveOnMap(speed)
 
+
+class Chat():
+	
+	def __init__(self):
+		self.messages = {
+			'global': []
+		}
+		self.qty_limit = 20
+	
+	def add(self, chat_type, username, msg):
+		self.messages[chat_type].append((username, msg))
+	
+	def limit(self):
+		if len(self.messages['global']) > self.qty_limit:
+			self.messages['global'].pop(0)
+
 #----------------
 
 utils  = Utils()
 config = Config()
+chat = Chat()
 
 # ======================================================================
 # FUNCTIONS ============================================================
 # ======================================================================
 
-# ~ current_levels = {
-	# ~ 'Iken': []
-# ~ }
-
-def threaded_bot(stranger_id, stranger_name):
+def threaded_bot(stranger_id, stranger_name, lvl_min=1, lvl_max=10):
 	
 	global connections, players, game_time, _id #, current_levels
+	
+	if lvl_min < 1: lvl_min = 1
 	
 	# ~ while True:
 		
@@ -860,7 +864,7 @@ def threaded_bot(stranger_id, stranger_name):
 		
 		# ~ stranger_info = config.STRANGERS[stranger_name]
 		
-		r = random.randrange(1,7)
+		r = random.randrange(lvl_min, lvl_max+1)
 		stranger_info = config.getStranger(stranger_name, r)
 		
 		map_limits = config.MAP[config.map_name]
@@ -869,31 +873,31 @@ def threaded_bot(stranger_id, stranger_name):
 		players[stranger_id] = {
 			'x':     random.randrange(20*config.posdiv, (map_limits['x']-20)*config.posdiv),
 			'y':     random.randrange(20*config.posdiv, (map_limits['y']-20)*config.posdiv),
-			'name':  stranger_name,								# Stranger name
-			'type':  'Stranger',								# Type of ship
-			'creds': stranger_info['creds'],					# Number of credits
-			'exp':   stranger_info['exp'],						# Score
-			'ang':   0,											# Angle
-			'atk':   False,										# Attacking
+			'name':  f'{stranger_name} {stranger_info["type"]}',		# Stranger name and type
+			'type':  'Stranger',										# Type of ship
+			'creds': stranger_info['creds'],							# Number of credits
+			'exp':   stranger_info['exp'],								# Score
+			'ang':   0,													# Angle
+			'atk':   False,												# Attacking
 			'ship': {
-				'name':    stranger_name,						# Ship Name
-				'path':    stranger_info['path'],				# Path of ship design
-				'lvl':     stranger_info['lvl'],				# Stranger level
-				'lhp':     stranger_info['lhp'],				# Health Points
-				'lsp':     stranger_info['lsp'],				# Shield Points
+				'name':    stranger_name,								# Ship Name
+				'path':    stranger_info['path'],						# Path of ship design
+				'lvl':     stranger_info['lvl'],						# Stranger level
+				'lhp':     stranger_info['lhp'],						# Health Points
+				'lsp':     stranger_info['lsp'],						# Shield Points
 				'chp':     stranger_info['lhp']*stranger_info['hp'],	# Current Health Points
 				'csp':     stranger_info['lsp']*stranger_info['sp'],	# Current Shield Points
-				's_unlkd': True,								# Shield Unlocked
-				'dtry':    False,								# Destroyed
-				'spd_lvl': stranger_info['spd_lvl'],			# Speed level
+				's_unlkd': True,										# Shield Unlocked
+				'dtry':    False,										# Destroyed
+				'spd_lvl': stranger_info['spd_lvl'],					# Speed level
 				'weapon': {
-					'name': stranger_info['wpn_name'],			# Weapon name
-					'lvl':  stranger_info['wpn_lvl']			# Weapon level
+					'name': stranger_info['wpn_name'],					# Weapon name
+					'lvl':  stranger_info['wpn_lvl']					# Weapon level
 				}
 			},
 			'selected': {
-				'name': '',					# Selected Username
-				'id':   -1,					# Selected ID user
+				'name': '',												# Selected Username
+				'id':   -1,												# Selected ID user
 			},
 			'dmginfo': {}
 		}
@@ -901,13 +905,13 @@ def threaded_bot(stranger_id, stranger_name):
 		stranger = Stranger(players[stranger_id], stranger_id)
 		stranger.loadData(players)
 		
-		print(f"[LOG] {stranger_name} Generated. ID: {stranger_id} ({int(stranger.x/config.posdiv)},{int(stranger.y/config.posdiv)})")
+		print(f"[LOG] {stranger_name} ({stranger.ship.lvl}) Generated. ID: {stranger_id} ({int(stranger.x/config.posdiv)},{int(stranger.y/config.posdiv)})")
 		
 		deltaTime = 1
 		
 		while stranger.ship.chp > 0:
 			
-			# ~ try:
+			try:
 				
 				game_time = int(time.perf_counter()-start_time)
 				
@@ -915,15 +919,23 @@ def threaded_bot(stranger_id, stranger_name):
 				stranger.setData()
 				stranger.ship.healHP()
 				stranger.ship.healSP()
-				# ~ stranger.radioactiveZone()
+				stranger.radioactiveZone()
 				stranger.randomMove(deltaTime)
 				
 				deltaTime = stranger.deltaTime(FPS) / config.dtdiv
 				
-			# ~ except Exception as e:
-				# ~ if not str(e).startswith('[WinError 10054]'):
-					# ~ print(e, 'Error')
-				''# ~ break
+			except Exception as e:
+				if not str(e).startswith('[WinError 10054]'):
+					print(e, 'Error')
+				break
+				# ~ [DISCONNECT] Name: xD, Client Id: 96 disconnected
+				# ~ Exception ignored in thread started by: <function threaded_bot at 0x000001A2EE59FD30>
+				# ~ Traceback (most recent call last):
+				  # ~ File "Server.py", line 919, in threaded_bot
+					# ~ stranger.setData()
+				  # ~ File "Server.py", line 506, in setData
+					# ~ dmginfo = players[data['dmginfo']['id']]['dmginfo']
+				''# ~ KeyError: 96
 		
 		print(f'[LOG] Destroyed: {stranger_name}, ID: {stranger_id}')
 		
@@ -932,7 +944,7 @@ def threaded_bot(stranger_id, stranger_name):
 			players[stranger.primary_atk]['exp']   += players[stranger_id]['exp']
 		except: pass
 		
-		time.sleep(1)
+		time.sleep(5)
 		
 		del players[stranger_id]
 		
@@ -988,6 +1000,7 @@ def threaded_client(conn, _id):
 	while True:
 		
 		try:
+			
 			game_time = int(time.perf_counter()-start_time)
 			
 			data = conn.recv(kbyte)
@@ -995,7 +1008,7 @@ def threaded_client(conn, _id):
 			if not data: break
 			
 			data = data.decode('utf-8')
-			# ~ print('[DATA] Recieved', data, 'from client id:', current_id)
+			#print('[DATA] Recieved', data, 'from client id:', current_id)
 			
 			if data.startswith('data:'):
 				
@@ -1074,6 +1087,21 @@ def threaded_client(conn, _id):
 				
 				send_data = pickle.dumps(players)
 				
+			elif data.startswith('msg:'):
+				
+				msg = data[len('msg:'):]
+				data = msg.split(':')
+				chat_type = data[0]
+				username  = data[1]
+				msg = ':'.join(data[2:])
+				chat.add(chat_type, username, msg)
+				chat.limit()
+				send_data = pickle.dumps(chat.messages)
+				
+			elif data == 'get msg':
+				
+				send_data = pickle.dumps(chat.messages)
+				
 			elif data == 'get':
 				
 				send_data = pickle.dumps(players)
@@ -1083,8 +1111,9 @@ def threaded_client(conn, _id):
 			conn.send(send_data)
 		
 		except Exception as e:
-			if not str(e).startswith('[WinError 10054]'):
-				print(e, 'Error')
+			print(e)
+			# ~ if not str(e).startswith('[WinError 10054]'):
+				# ~ print(e, 'Error')
 			break
 		
 		time.sleep(FPS)
@@ -1094,6 +1123,13 @@ def threaded_client(conn, _id):
 	connections -= 1
 	del players[current_id]
 	conn.close()
+
+
+def generateStranger(stranger_name, r_min, r_max):
+	global _id
+	_id += 1
+	thread.start_new_thread(threaded_bot, (_id, stranger_name, r_min, r_max))
+	time.sleep(.01)
 
 
 @atexit.register
@@ -1136,12 +1172,28 @@ start_time = 0
 game_time = 'Starting Soon'
 kbyte = 1024
 
+current_levels = {
+	'Iken': []
+}
+
 # STRANGERS ============================================================
 
-for i in range(26):
-	_id += 1
-	thread.start_new_thread(threaded_bot, (_id, 'Iken'))
-	time.sleep(.01)
+for i in range(30):
+	i+=1
+	if i <= 20:
+		generateStranger('Iken',  0, 12)
+	elif i <= 24:
+		generateStranger('Iken', 13, 24)
+	elif i <= 26:
+		generateStranger('Iken', 25, 27)
+	elif i == 27:
+		generateStranger('Iken', 28, 55)
+	elif i == 28:
+		generateStranger('Iken', 56, 84)
+	elif i == 29:
+		generateStranger('Iken', 85, 111)
+	else:
+		generateStranger('Iken', 112, 120)
 
 # MAINLOOP =============================================================
 
