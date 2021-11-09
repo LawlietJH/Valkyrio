@@ -14,7 +14,7 @@ import os
 
 __project__ = 'Valkyrio'
 __author__  = 'LawlietJH'
-__version__ = '0.0.6 (Alfa)'
+__version__ = '0.0.7 (Alfa)'
 
 __license__ = 'MIT'
 __status__  = 'Development'
@@ -37,23 +37,33 @@ class Utils:
 			return True
 		return False
 	
-	def cos(self, deg=45, dec=None):
+	def cos(self, deg=45):
 		rad = math.radians(deg)
-		cos = math.cos(rad)
-		if dec: return round(cos, dec)
-		else: return cos
+		return math.cos(rad)
 	
-	def sin(self, deg=45, dec=None):
+	def sin(self, deg=45):
 		rad = math.radians(deg)
-		sin = math.sin(rad)
-		if dec: return round(sin, dec)
-		else: return sin
+		return math.sin(rad)
 	
-	def diagonal(self, h, deg=45, dec=None):
+	def diagonal(self, h, deg=45, rounded=True):
+		
+		inv = True if deg//90 in [1,-1,3,-3] else False 
 		deg = deg%90
-		ca = h * self.cos(deg, dec)
-		co = h * self.sin(deg, dec)
-		return ca, co
+		
+		if inv:
+			co = h * self.cos(deg)
+			ca = h * self.sin(deg)
+		else:
+			ca = h * self.cos(deg)
+			co = h * self.sin(deg)
+		
+		if rounded:
+			if str(rounded).isnumeric():
+				return {'x': round(ca, rounded), 'y': round(co, rounded)}
+			else:
+				return {'x': round(ca, 2), 'y': round(co, 2)}
+		else:
+			return {'x': ca, 'y': co}
 	
 	def euclideanDistance(self, A, B):
 		''' Formula: d(A,B) = sqrt( (Xb-Xa)^2 + (Yb-Ya)^2 )
@@ -67,6 +77,7 @@ class Utils:
 		return d
 	
 	def getAngle(self, A, B):
+		''' Donde: A=(Xa,Ya), B=(Xb,Yb) '''
 		Xa, Ya = A
 		Xb, Yb = B
 		X = (Xb-Xa)
@@ -95,7 +106,6 @@ class Utils:
 		if border:
 			zeroed_rect.inflate_ip(-2*border, -2*border)
 			self._renderRegion(image, zeroed_rect, inside, rad)
-		# ~ surface.blit(image, rect)
 		return (image, rect)
 	
 	def _renderRegion(self, image, rect, color, rad):
@@ -104,6 +114,74 @@ class Utils:
 			pygame.draw.circle(image, color, getattr(corners,attribute), rad)
 		image.fill(color, rect.inflate(-2*rad,0))
 		image.fill(color, rect.inflate(0,-2*rad))
+	
+	def moveWindow(self, win_x, win_y, win_w, win_h):
+		from ctypes import windll
+		# ~ NOSIZE = 1
+		# ~ NOMOVE = 2
+		# ~ TOPMOST = -1
+		# ~ NOT_TOPMOST = -2
+		# ~ windll.user32.SetWindowPos(hwnd, NOT_TOPMOST, 0, 0, 0, 0, NOMOVE|NOSIZE)
+		# ~ w, h = pygame.display.get_surface().get_size()
+		hwnd = pygame.display.get_wm_info()['window']
+		windll.user32.MoveWindow(hwnd, win_x, win_y, win_w, win_h, False)
+	
+	def splitText(self, text, chunk_size=32):
+		
+		output = []
+		chunks  = len(text)//chunk_size
+		chunks += 1 if len(text)%chunk_size > 0 else 1
+		
+		while text:
+			
+			p = chunk_size
+			br = 1
+			
+			try:
+				while not text[p] == ' ':
+					p -= 1
+					if p == 0:
+						br = 0
+						p = chunk_size
+						break
+			except: pass
+			
+			chunk = text[:p]
+			text = text[p+br:]
+			output.append(chunk)
+		
+		return output
+	
+	def colorMask(self, surf, color, color_to_replace=(255,255,255)):
+		''' pygame.transform.threshold(
+			mask_image, img, color_to_replace,
+			(0,0,0,0), color, 1, None, True)
+		'''
+		pygame.transform.threshold(
+			surf, surf, color_to_replace,
+			(0,0,0,0), color, 1, None, True
+		)
+	
+	def perfectOutline(self, img, loc, color=(0,0,0), alpha=255, br=1):
+		
+		mask = pygame.mask.from_surface(img)
+		mask_surf = mask.to_surface()
+		
+		# Remplaza el color en la imagen y agrega transparencia (alpha: 0~255)
+		self.colorMask(mask_surf, (*color, alpha))
+		
+		# Agrega la transparencia de la imagen
+		mask_surf.set_colorkey((0,0,0))
+		
+		WIN.blit(mask_surf, (loc[0]-br, loc[1]))
+		WIN.blit(mask_surf, (loc[0]+br, loc[1]))
+		WIN.blit(mask_surf, (loc[0], loc[1]-br))
+		WIN.blit(mask_surf, (loc[0], loc[1]+br))
+		
+		WIN.blit(mask_surf, (loc[0]-br, loc[1]-br))
+		WIN.blit(mask_surf, (loc[0]+br, loc[1]+br))
+		WIN.blit(mask_surf, (loc[0]-br, loc[1]+br))
+		WIN.blit(mask_surf, (loc[0]+br, loc[1]-br))
 	
 	@property
 	def curWinRect(self):
@@ -121,17 +199,6 @@ class Utils:
 	def curWinSize(self):
 		info = pygame.display.Info()
 		return [info.current_w, info.current_h]
-	
-	def moveWindow(self, win_x, win_y, win_w, win_h):
-		from ctypes import windll
-		# ~ NOSIZE = 1
-		# ~ NOMOVE = 2
-		# ~ TOPMOST = -1
-		# ~ NOT_TOPMOST = -2
-		# ~ windll.user32.SetWindowPos(hwnd, NOT_TOPMOST, 0, 0, 0, 0, NOMOVE|NOSIZE)
-		# ~ w, h = pygame.display.get_surface().get_size()
-		hwnd = pygame.display.get_wm_info()['window']
-		windll.user32.MoveWindow(hwnd, win_x, win_y, win_w, win_h, False)
 
 
 class Config:
@@ -151,6 +218,7 @@ class Config:
 			'Azul Celeste': ( 34,113,179),
 			'Azul Noche':   ( 25, 28, 50),
 			'Rojo':         (255,  0,  0),
+			'Rojo Opaco':   (127,  0,  0),
 			'Verde':        (  0,255,  0),
 			'Azul':         (  0,  0,255),
 			'Cyan':         (  0,180,200),
@@ -171,7 +239,9 @@ class Config:
 		
 		self.FONT = {
 			'Inc-R 12': pygame.font.Font('font/Inconsolata-Regular.ttf', 12),
+			'Inc-R 13': pygame.font.Font('font/Inconsolata-Regular.ttf', 13),
 			'Inc-R 14': pygame.font.Font('font/Inconsolata-Regular.ttf', 14),
+			'Inc-R 15': pygame.font.Font('font/Inconsolata-Regular.ttf', 15),
 			'Inc-R 16': pygame.font.Font('font/Inconsolata-Regular.ttf', 16),
 			'Inc-R 18': pygame.font.Font('font/Inconsolata-Regular.ttf', 18),
 			'Inc-R 20': pygame.font.Font('font/Inconsolata-Regular.ttf', 20),
@@ -219,14 +289,15 @@ class Config:
 			'creds_exp':     True,		# Show credits and experience
 			'acc_dmg':       True,		# Show accumulated damage
 			'map_enemies':   True,		# Show all enemies on minimap
-			'matrix_bg_fix': True		# Show background matrix fixed
+			'matrix_bg_fix': True,		# Show background matrix fixed
+			'chat':          False		# Show Chat
 		}
 		
 		self.WEAPON = {
 			'Laser-mid': {
 				'path': 'img/weapons/laser.png',
-				'dmg': 100,			# Base damage
-				'inc': 20,			# Damage increment per level
+				'dmg': 50,			# Base damage
+				'inc': 5,			# Damage increment per level
 				'ammo': 1000,		# Ammunition
 				'dist': 250,		# Minimum distance to attack enemies
 				'pct_sp': .7,		# Damage percentage to SP
@@ -252,7 +323,6 @@ class Config:
 			}
 		}
 		
-		self.speedmul = 100								# Speed multiplier
 		self.baseHP = 350
 		self.baseSP = 250
 		self.SHIP = {
@@ -288,9 +358,9 @@ class Config:
 		}
 		
 		self.MAP = {
-			'Zwem':   { 'x': 150, 'y': 150 },
-			'Karont': { 'x': 200, 'y': 200 },
-			'Arkont': { 'x': 250, 'y': 250 }
+			'Zwem':   { 'x': 200, 'y': 150 },
+			'Karont': { 'x': 250, 'y': 200 },
+			'Arkont': { 'x': 300, 'y': 250 }
 		}
 		
 		self.roundRects = {}							# Created round rects
@@ -300,12 +370,11 @@ class Config:
 		self.name_max_char_len = 24						# Maximum Character Length
 		
 		# Data settings
-		# ~ self.BASE_SPEED = 50							# Base Speed of Ships
-		self.MAX_SPD_LVL = 112						# Max Speed level of Ships
-		self.dtdiv = 10 * self.speedmul					# Detla Time Divide
+		self.MAX_SPD_LVL = 112							# Max Speed level of Ships
+		self.dtdiv = 1000								# Detla Time Divide
 		self.posdiv = 30								# Divide the actual position of pixels X and Y to generate coordinates for the map
 		self.rad_dmg = 500								# Radioactive Damage 
-		self.open_menu = True							# Is open menu
+		self.open_menu = False							# Is open menu
 		self.pos_tab_menu = 1							# Position of menu tab
 		
 		# Counters
@@ -316,7 +385,6 @@ class Config:
 		self.xy_pixels_sqr = 50							# Type: True = fixed.     X and Y pixels in squares on background
 		
 		# Screen settings
-		# ~ self.RESOLUTION = (1280, 768)					# Resolution
 		self.min_w = 600								# Minimum width resolution
 		self.min_h = 400								# Minimum height resolution
 		self.full_screen = False						# Full Screen
@@ -334,16 +402,8 @@ class Config:
 		
 		# Map settings
 		self.map_name = 'Zwem'
-		self.map_w = 150
-		self.map_h = 120
 	
-	@property
-	def map_x(self):
-		return self.W - self.map_w - 5
-	
-	@property
-	def map_y(self):
-		return self.H - self.map_h - 5
+	# Properties ---------------------------------
 	
 	@property
 	def CENTER(self):
@@ -358,20 +418,11 @@ class Config:
 		return self.RESOLUTION[1]
 	
 	@property
-	def map_limits(self, map_name=None):	# Actual map coordinates in number of pixels
-		
-		limits = self.MAP['Zwem']
-		
-		if not map_name: map_name = self.map_name
-		
-		if self.MAP.get(map_name):
-			
-			limits = {
-				'x': self.MAP[map_name]['x'] * self.posdiv,
-				'y': self.MAP[map_name]['y'] * self.posdiv
-			}
-		
-		return limits
+	def map_limits(self): # Actual map coordinates in number of pixels
+		return {
+			'x': self.MAP[self.map_name]['x'] * self.posdiv,
+			'y': self.MAP[self.map_name]['y'] * self.posdiv
+		}
 	
 	@property
 	def limit_obj_dist(self):
@@ -381,6 +432,59 @@ class Config:
 								(0, 0)
 							)) + 100
 		return limit_obj_dist
+	
+	# Functions ----------------------------------
+	
+	def videoResize(self, event):
+		if not self.RESOLUTION == event.size:
+			if not self.full_screen \
+			and time.perf_counter() - self.init_time_windowed > 1:
+				mw = self.min_w
+				mh = self.min_h
+				w, h = event.size
+				if w < mw: w = mw
+				if h < mh: h = mh
+				self.RESOLUTION = (w, h)
+				WIN = pygame.display.set_mode((w, h), HWSURFACE | DOUBLEBUF | RESIZABLE)
+			else:
+				self.RESOLUTION = event.size
+	
+	def switchFullScreen(self):
+		
+		if not self.full_screen:
+			self.full_screen = True
+			self.windowed_pos = utils.curWinRect[:2] + utils.curWinSize
+			WIN = pygame.display.set_mode(
+				self.screen_full_size,
+				HWSURFACE | DOUBLEBUF | FULLSCREEN
+			)
+		else:
+			self.init_time_windowed = time.perf_counter()
+			self.full_screen = False
+			win_x = self.windowed_pos[0]
+			win_y = self.windowed_pos[1]
+			win_w = self.windowed_pos[2]
+			win_h = self.windowed_pos[3]
+			
+			self.RESOLUTION = (win_w, win_h)
+			WIN = pygame.display.set_mode(
+				(win_w, win_h),
+				HWSURFACE | DOUBLEBUF | RESIZABLE
+			)
+			
+			add_w  = utils.curWinRect[2]
+			add_w += abs(utils.curWinRect[0])
+			add_w -= utils.curWinSize[0]
+			
+			add_h  = utils.curWinRect[3]
+			add_h += abs(utils.curWinRect[1])
+			add_h -= utils.curWinSize[1]
+			
+			utils.moveWindow(win_x, win_y, win_w+add_w, win_h+add_h)
+			WIN = pygame.display.set_mode(
+				self.RESOLUTION,
+				HWSURFACE | DOUBLEBUF | RESIZABLE
+			)
 
 
 class Weapon:
@@ -441,17 +545,13 @@ class Ship:
 		self.time_sp_init = 0			# Time Counter to heal SP
 		
 		self.timeOnBorder = 0
+		self.pct_res_dmg_rad = 0		# 0.0~1.0: Percentage of resistance to damage in the radiative zone
 		
 		self.damageRecv = []
 		self.healthRecv = []
 	
 	@property
 	def speed(self):
-		# Constant: 201.7857142857143 to 112 level = 150
-		#speed  = config.BASE_SPEED
-		#speed += self.base['speed']
-		#speed += self.spd_lvl
-		
 		# Aumento de velocidad en forma exponencial y=sqrt(200x+100) tomando en cuenta que
 		# el nivel x=112 y=150, todo basado en: y=sqrt(max_lvl*current_lvl)
 		init = 10
@@ -564,6 +664,10 @@ class Player:
 		self.angle = 0
 		self.attacking = False
 		self.under_attack = False
+		
+		self.follow_pos = False
+		self.follow_pos_move = False
+		self.follow_pos_xy = (0,0)
 		
 		self.selected = {
 			'id':   -1,
@@ -723,10 +827,8 @@ class Player:
 		if not player['ship']['csp'] == 0 \
 		and player['ship']['csp'] <= self.ship.lsp:
 			self.ship.csp = player['ship']['csp']
-			print(self.ship.csp, self.name)
 		else:
 			self.ship.csp = self.ship.sp
-			
 		
 		self.ship.destroyed = player['ship']['dtry']
 		self.ship.spd_lvl = player['ship']['spd_lvl']
@@ -828,6 +930,385 @@ class Player:
 			color = image.get_at((0,0))
 			image.set_colorkey(color, RLEACCEL)
 		return image
+	
+	def followPos(self, speed):
+		
+		if self.follow_pos:
+			
+			x = int(self.x)
+			y = int(self.y)
+			gpx, gpy = self.follow_pos_xy
+			
+			if not self.follow_pos_move:
+				self.angle = -utils.getAngle((x,y),(gpx,gpy))
+				self.rotate(self.angle)
+				self.follow_pos_move = True
+			
+			if self.selected['id'] >= 0:
+				angle = -utils.getAngle((x,y),(gpx,gpy))
+				mov_speed = utils.diagonal(speed, self.angle)
+				if self.attacking:
+					mov_speed = utils.diagonal(speed, angle)
+				elif not int(angle) == int(self.angle):
+					self.angle = angle
+					self.rotate(self.angle)
+			else:
+				mov_speed = utils.diagonal(speed, self.angle)
+			
+			dist_px = int(utils.euclideanDistance((x,y),(gpx,gpy)))
+			
+			if dist_px > 5:
+				if x > gpx and y < gpy:
+					self.x -= mov_speed['x']
+					self.y += mov_speed['y']
+				elif x < gpx and y < gpy:
+					self.x += mov_speed['x']
+					self.y += mov_speed['y']
+				elif x < gpx and y > gpy:
+					self.x += mov_speed['x']
+					self.y -= mov_speed['y']
+				elif x > gpx and y > gpy:
+					self.x -= mov_speed['x']
+					self.y -= mov_speed['y']
+				elif x > gpx and y == gpy:
+					self.x -= speed
+				elif x < gpx and y == gpy:
+					self.x += speed
+				elif y > gpy and x == gpx:
+					self.y -= speed
+				elif y < gpy and x == gpx:
+					self.y += speed
+			else:
+				self.cancelFollowPos()
+	
+	def cancelFollowPos(self):
+		self.follow_pos = False
+		self.follow_pos_move = False
+		self.follow_pos_xy = (0,0)
+
+#-------------------------------------------------
+
+class Minimap:
+	
+	def __init__(self):
+		
+		# Map settings
+		self.map_name = 'Zwem'
+		self.map_name_rect = (0,0)
+		self.map_w = 150
+		self.map_h = 120
+		self.map_x = config.W - self.map_w - 5
+		self.map_y = config.H - self.map_h - 5
+		self.map_move = False
+		self.map_move_pos = (0,0)
+		self.map_move_x = config.W - self.map_w - 5
+		self.map_move_y = config.H - self.map_h - 5
+		
+		# Current Quadrant on Screen
+		self.quad = 4
+		
+		# Tamaño del minimapa
+		self.btn_col     = 'Cyan'
+		self.btn_col_off = 'Rojo Opaco'
+		self.btn_plus  = []
+		self.btn_minus = []
+		self.map_resize = False
+		self.map_size = 1
+		self.map_size_max = 6
+		self.map_size_x = 25
+		self.map_size_y = 20
+		self.set_size(mult=self.map_size)
+	
+	def setFollowPos(self, event):
+		
+		x, y = event.pos
+		
+		# Distancia en coordenadas falsas (las coordenadas falsas son las mostradas al usuario en gameplay)
+		dif_x = x-self.map_x
+		dif_y = y-self.map_y
+		
+		# Distancia en coordenadas reales basado en el tamaño del mapa
+		dif_x = int(round(config.MAP[self.map_name]['x'] * (dif_x/self.map_w)))
+		dif_y = int(round(config.MAP[self.map_name]['y'] * (dif_y/self.map_h)))
+		
+		if  1 < dif_x < config.MAP[self.map_name]['x']-1\
+		and 1 < dif_y < config.MAP[self.map_name]['y']-1:
+			player.follow_pos = True
+			player.follow_pos_move = False
+			player.follow_pos_xy = (	# Ahora se toman las cordenadas reales (en pixeles)
+				dif_x*config.posdiv,
+				dif_y*config.posdiv
+			)
+		# ~ else:
+			# ~ if player.follow_pos:
+		''		# ~ player.cancelFollowPos()
+	
+	def scrPosOnMap(self, x, y, add=2):
+		return (
+			x-add-((config.CENTER['x']/config.posdiv) / config.MAP[self.map_name]['x'] * self.map_w),
+			y-add-((config.CENTER['y']/config.posdiv) / config.MAP[self.map_name]['y'] * self.map_h),
+			(add*2)+(config.W/config.posdiv) / config.MAP[self.map_name]['x'] * self.map_w,
+			(add*2)+(config.H/config.posdiv) / config.MAP[self.map_name]['y'] * self.map_h
+		)
+	
+	def set_size(self, add=True, mult=1):
+		
+		self.map_w = 150 + (self.map_size_x*self.map_size)
+		self.map_h = 120 + (self.map_size_y*self.map_size)
+		
+		if add:
+			if self.quad in [1,4]:
+				self.map_x -= self.map_size_x * mult
+			if self.quad in [3,4]:
+				self.map_y -= self.map_size_y * mult
+		else:
+			if self.quad in [1,4]:
+				self.map_x += self.map_size_x * mult
+			if self.quad in [3,4]:
+				self.map_y += self.map_size_y * mult
+		
+		# ~ self.quadrant(*config.RESOLUTION)
+		self.map_resize = True
+		self.map_move_x = self.map_x
+		self.map_move_y = self.map_y
+	
+	def resize(self, event):
+		
+		x, y = event.pos
+		
+		if  self.btn_minus[1][0]-5 < x < self.btn_minus[1][0]+self.btn_minus[0][0]+3\
+		and self.btn_minus[1][1]   < y < self.btn_minus[1][1]+self.btn_minus[0][1]:
+			if not self.map_size == 0:
+				self.map_size -= 1
+				self.set_size(add=False)
+		
+		if  self.btn_plus[1][0]-5 < x < self.btn_plus[1][0]+self.btn_plus[0][0]+5\
+		and self.btn_plus[1][1]   < y < self.btn_plus[1][1]+self.btn_plus[0][1]:
+			if not self.map_size == self.map_size_max:
+				self.map_size += 1
+				self.set_size(add=True)
+	
+	def limitMove(self): # Limita el movimiento del mapa para que no pueda salir de la pantalla
+		if self.map_x > self.map_x_orig:
+			self.map_x = self.map_x_orig
+		if self.map_x-5 < 0:
+			self.map_x = 5
+		if self.map_y > self.map_y_orig:
+			self.map_y = self.map_y_orig
+		if self.map_y-self.map_name_rect[1]-5 < 0:
+			self.map_y = self.map_name_rect[1]+5
+	
+	def quadrant(self, w, h):
+		if   self.map_x > w//2 and self.map_y < h//2: self.quad = 1			# Right Upper Quadrant
+		elif self.map_x < w//2 and self.map_y < h//2: self.quad = 2			# Left  Upper Quadrant
+		elif self.map_x < w//2 and self.map_y > h//2: self.quad = 3			# Left  Lower Quadrant
+		elif self.map_x > w//2 and self.map_y > h//2: self.quad = 4			# Right Lower Quadrant
+	
+	def onResizeScreen(self, orig_res):
+		
+		w, h = orig_res
+		
+		self.quadrant(w, h)
+		
+		if self.quad in [1,4]:
+			dif_x = w - self.map_x
+			self.map_x = config.W - dif_x
+		if self.quad in [3,4]:
+			dif_y = h - self.map_y
+			self.map_y = config.H - dif_y
+		
+		self.limitMove()
+		
+		self.map_move_x = self.map_x
+		self.map_move_y = self.map_y
+	
+	def mouseButtonDown(self, event):
+		pos_x, pos_y = event.pos
+		if  self.map_move_x < pos_x < self.map_move_x+self.map_name_rect[0]\
+		and self.map_move_y-self.map_name_rect[1] < pos_y < self.map_move_y:
+			self.map_move = True
+			self.map_move_pos = event.pos
+	
+	def mouseButtonUp(self):
+		if self.map_move:
+			self.map_move_x = self.map_x
+			self.map_move_y = self.map_y
+			self.map_move = False
+	
+	def mouseMotion(self, event):
+		
+		if self.map_move:
+			
+			pos_x, pos_y = event.pos
+			clic_pos_x, clic_pos_y = self.map_move_pos
+			x = pos_x-self.map_move_x
+			y = pos_y-self.map_move_y
+			d_x = abs(self.map_move_x-clic_pos_x)
+			d_y = abs(self.map_move_y-clic_pos_y)
+			
+			self.map_x = self.map_move_x+x-d_x
+			self.map_y = self.map_move_y+y+d_y
+			
+			self.quadrant(*config.RESOLUTION)
+			
+			self.limitMove()
+	
+	def windowLeave(self):
+		if self.map_move:
+			self.map_move_x = self.map_x
+			self.map_move_y = self.map_y
+			self.map_move = False
+	
+	@property
+	def map_pos(self):
+		return [
+			self.map_x, self.map_y,
+			self.map_w, self.map_h
+		]
+	
+	@property
+	def player_pos(self):
+		return (
+			round((player.x/config.posdiv) / config.MAP[self.map_name]['x'] * self.map_w + self.map_x, 2),
+			round((player.y/config.posdiv) / config.MAP[self.map_name]['y'] * self.map_h + self.map_y, 2)
+		)
+	
+	@property
+	def map_x_orig(self):
+		return config.W - self.map_w - 5
+	
+	@property
+	def map_y_orig(self):
+		return config.H - self.map_h - 5
+
+
+class Chat:
+	
+	def __init__(self):
+		
+		self.messages = {
+			'global': [
+				('Enylaine','Hola :D'),
+				('LOL','xD')
+			]
+		}
+		
+		self.chat_name = 'Chat'
+		self.chat_name_rect = (0,0)
+		self.chat_global_name_rect = (0,0)
+		self.chat_min_w = 150
+		self.chat_min_h = 120
+		self.chat_max_w = 300
+		self.chat_max_h = 240
+		self.chat_w = 225
+		self.chat_h = 150
+		self.chat_x = 5
+		self.chat_y = 20
+		self.chat_x_orig = self.chat_x
+		self.chat_y_orig = self.chat_y
+		self.chat_move = False
+		self.chat_move_pos = (0,0)
+		self.chat_move_x = self.chat_x
+		self.chat_move_y = self.chat_y
+		self.pct_tr = 50					# Percentage of transparency
+		self.chat_text_active = False
+		self.chat_text = ''
+		self.chat_tab = 1
+		self.chat_msg_tam = 14				# 12, 14, 16
+		
+		self.init_time = time.perf_counter()
+	
+	@property
+	def chat_pos(self):
+		return [
+			self.chat_x, self.chat_y,
+			self.chat_w, self.chat_h
+		]
+	
+	@property
+	def chat_input_pos(self):
+		anc = 4
+		return [
+			self.chat_x + anc*1.5, self.chat_h - anc*1.5,
+			self.chat_w -(anc*3),  anc*5
+		]
+	
+	@property
+	def chat_inner_pos(self):
+		anc, tab = 4, 18
+		return [
+			self.chat_x + anc,    self.chat_y + tab,
+			self.chat_w -(anc*2), self.chat_h - tab - anc
+		]
+	
+	def perSecond(self, t=1):
+		if time.perf_counter() - self.init_time >= t:
+			self.init_time = time.perf_counter()
+			return True
+		return False
+	
+	def activeInput(self, event):
+		if event.button == 1:
+			x, y = event.pos
+			inp_pos = self.chat_input_pos
+			if  inp_pos[0] < x < inp_pos[0]+inp_pos[2]\
+			and inp_pos[1] < y < inp_pos[1]+inp_pos[3]:
+				self.chat_text_active = True
+			else:
+				self.chat_text_active = False
+		else:
+			if chat.chat_text_active:
+				chat.chat_text_active = False
+	
+	def setGlobalMessages(self, messages):
+		self.messages['global'] = messages
+	
+	def limitMove(self): # Limita el movimiento del mapa para que no pueda salir de la pantalla
+		if self.chat_x > self.chat_x_orig:
+			self.chat_x = self.chat_x_orig
+		if self.chat_x-5 < 0:
+			self.chat_x = 5
+		if self.chat_y > self.chat_y_orig:
+			self.chat_y = self.chat_y_orig
+		if self.chat_y-self.chat_name_rect[1]-5 < 0:
+			self.chat_y = self.chat_name_rect[1]+5
+	
+	def quadrant(self, w, h):
+		if   self.chat_x > w//2 and self.chat_y < h//2: self.quad = 1			# Right Upper Quadrant
+		elif self.chat_x < w//2 and self.chat_y < h//2: self.quad = 2			# Left  Upper Quadrant
+		elif self.chat_x < w//2 and self.chat_y > h//2: self.quad = 3			# Left  Lower Quadrant
+		elif self.chat_x > w//2 and self.chat_y > h//2: self.quad = 4			# Right Lower Quadrant
+	
+	def mouseButtonDown(self, event):
+		pos_x, pos_y = event.pos
+		if  self.chat_move_x < pos_x < self.chat_move_x+self.chat_name_rect[0]\
+		and self.chat_move_y-self.chat_name_rect[1] < pos_y < self.chat_move_y:
+			self.chat_move = True
+			self.chat_move_pos = event.pos
+	
+	def mouseButtonUp(self):
+		if self.chat_move:
+			self.chat_move_x = self.chat_x
+			self.chat_move_y = self.chat_y
+			self.chat_move = False
+	
+	def mouseMotion(self, event):
+		
+		if self.chat_move:
+			
+			pos_x, pos_y = event.pos
+			clic_pos_x, clic_pos_y = self.chat_move_pos
+			x = pos_x-self.chat_move_x
+			y = pos_y-self.chat_move_y
+			d_x = abs(self.chat_move_x-clic_pos_x)
+			d_y = abs(self.chat_move_y-clic_pos_y)
+			
+			self.chat_x = self.chat_move_x+x-d_x
+			self.chat_y = self.chat_move_y+y+d_y
+			
+			self.quadrant(*config.RESOLUTION)
+			
+			self.limitMove()
 
 #=======================================================================
 #=======================================================================
@@ -837,10 +1318,15 @@ pygame.init()
 pygame.mixer.init()
 pygame.font.init()
 
-server = Network()
-utils  = Utils()
-config = Config()
-player = Player()
+# Basic Objects
+server  = Network()
+utils   = Utils()
+config  = Config()
+player  = Player()
+
+# General Objects
+minimap = Minimap()
+chat = Chat()
 
 # Dynamic Variables
 enemies = {}
@@ -850,6 +1336,322 @@ WIN = None
 #=======================================================================
 #=======================================================================
 #=======================================================================
+
+# Events -----------------------------------------
+
+def keysDown(event):
+	
+	if event.key == pygame.K_ESCAPE:						# ESC - Close Game
+		config.run = False
+	
+	if event.key == pygame.K_LSHIFT:						# LShift- Attack
+		if player.selected['id'] >= 0:
+			player.attacking = not player.attacking
+	
+	# Hide/Show ---------------
+	if event.key == pygame.K_TAB:
+		
+		# Control de menu ------------------------
+		config.open_menu = not config.open_menu
+		
+		# Control de input del chat ------------------------
+		if chat.chat_text_active:
+			chat.chat_text_active = False
+	
+	if not config.open_menu:
+		if event.key == pygame.K_o:								# O - Hide/Show Names
+			config.show['name'] = not config.show['name']
+		if event.key == pygame.K_p:								# P - Hide/Show HP-SP
+			config.show['hp-sp'] = not config.show['hp-sp']
+	
+	#--------------------------
+	
+	if event.key == pygame.K_F11:
+		config.switchFullScreen()
+			
+	#--------------------------
+	
+	if event.key == pygame.K_1:
+		if config.open_menu:
+			config.pos_tab_menu = 1
+	if event.key == pygame.K_2:
+		if config.open_menu:
+			config.pos_tab_menu = 2
+	if event.key == pygame.K_3:
+		if config.open_menu:
+			config.pos_tab_menu = 3
+	if event.key == pygame.K_4:
+		if config.open_menu:
+			config.pos_tab_menu = 4
+	if event.key == pygame.K_5:
+		if config.open_menu:
+			config.pos_tab_menu = 5
+	if event.key == pygame.K_6:
+		if config.open_menu:
+			config.pos_tab_menu = 6
+	if event.key == pygame.K_7:
+		if config.open_menu:
+			config.pos_tab_menu = 7
+	if event.key == pygame.K_8:
+		if config.open_menu:
+			config.pos_tab_menu = 8
+	if event.key == pygame.K_9:
+		if config.open_menu:
+			config.pos_tab_menu = 9
+	if event.key == pygame.K_0:
+		if config.open_menu:
+			config.pos_tab_menu = 0
+	
+	#--------------------------
+	
+	if event.key == pygame.K_BACKSPACE:
+		# Control de input del chat ------------------------
+		if chat.chat_text_active and chat.chat_text:
+			chat.chat_text = chat.chat_text[:-1]
+	
+	if event.key == pygame.K_RETURN:
+		# Control de input del chat ------------------------
+		if chat.chat_text_active and chat.chat_text:
+			
+			if chat.chat_tab == 1: chat_type = 'global'
+			
+			msg = 'msg:'+chat_type+':'+player.name+':'+chat.chat_text
+			chat.messages = server.send(msg)
+			chat.chat_text = ''
+	
+	if event.key == pygame.K_PLUS:							# +
+		if chat.chat_w < chat.chat_max_w:
+			chat.chat_w += 5
+		print(chat.chat_w)
+	if event.key == pygame.K_MINUS:							# -
+		if chat.chat_w > chat.chat_min_w:
+			chat.chat_w -= 5
+		print(chat.chat_w)
+	
+	if event.key == pygame.K_t:								# t
+		if chat.chat_h < chat.chat_max_h:
+			chat.chat_h += 5
+		print(chat.chat_h)
+	if event.key == pygame.K_y:								# y
+		if chat.chat_h > chat.chat_min_h:
+			chat.chat_h -= 5
+		print(chat.chat_h)
+	
+	#--------------------------
+	if event.key == pygame.K_j:								# J - Speed level down
+		if player.ship.spd_lvl > 0:
+			cost = player.ship.spd_lvl
+			player.creds += cost
+			player.ship.speedLevelUP(-10)
+	if event.key == pygame.K_k:								# J - Speed level up
+		# ~ cost = (player.ship.spd_lvl+1)
+		# ~ if player.creds >= cost:
+			# ~ player.creds -= cost
+			player.ship.speedLevelUP(10)
+	
+	if event.key == pygame.K_u:								# U - HP level up
+		cost = (player.ship.lhp+1) * 10
+		if player.creds >= cost:
+			player.creds -= cost
+			player.ship.levelUpHP()
+	if event.key == pygame.K_i:								# I - SP level up
+		cost = (player.ship.lsp+1) * 10
+		if player.creds >= cost:
+			player.creds -= cost
+			if not player.ship.shield_unlocked:
+				player.ship.shield_unlocked = True
+			player.ship.levelUpSP()
+	
+	if event.key == pygame.K_h:								# H - Dmg level up
+		cost = (player.ship.weapon.lvl+1)
+		if player.creds >= cost:
+			player.creds -= cost
+			player.ship.weapon.levelUpDmg()
+	
+	if event.key == pygame.K_l:								# L - receive 100 Dmg
+		player.ship.recvDamage(100, pct_sp=1, mult=1)
+
+def detectEvents():
+	
+	con = True
+	
+	for event in pygame.event.get():
+		
+		if event.type == pygame.TEXTINPUT:
+			# Control de input del chat --------------------
+			if chat.chat_text_active:
+				chat.chat_text += event.text
+		
+		if event.type == pygame.QUIT:
+			config.run = False
+			
+			#-----------------------------------------------------------
+			if con: continue
+		
+		if event.type == VIDEORESIZE:
+			
+			temp_res = config.RESOLUTION
+			
+			# Cambio de resolución -------------------------------------
+			config.videoResize(event)
+			
+			# Control del movimimiento del minimapa --------------------
+			minimap.onResizeScreen(temp_res)
+			
+			#-------------------------------------
+			if con: continue
+		
+		if event.type == pygame.KEYDOWN:
+			
+			keysDown(event)
+			
+			#-------------------------------------
+			if con: continue
+		
+		if event.type == pygame.MOUSEMOTION:
+			
+			# Control del movimimiento del minimapa --------------------
+			minimap.mouseMotion(event)
+			
+			# Control del movimimiento del chat ------------------------
+			chat.mouseMotion(event)
+			
+			#-------------------------------------
+			if con: continue
+		
+		if event.type == pygame.MOUSEBUTTONDOWN:
+			
+			if not config.open_menu:
+				
+				# Control de seleccion del enemigo ---------------------
+				if not chat.chat_text_active:
+					players = selectEnemy(event)
+					if players: updateOtherPlayers(players)
+				
+				# Control del movimimiento del minimapa ----------------
+				minimap.mouseButtonDown(event)
+				
+				# Control del movimimiento del chat --------------------
+				chat.mouseButtonDown(event)
+				
+				# Control del tamaño del minimapa ----------------------
+				minimap.resize(event)
+				
+				# Control de seguimiento en el minimapa ----------------
+				if not minimap.map_resize:
+					minimap.setFollowPos(event)
+				
+				# Control de input del chat ----------------------------
+				chat.activeInput(event)
+				
+				#-------------------------------------------------------
+				if minimap.map_resize: minimap.map_resize = False
+			
+			#-------------------------------------
+			if con: continue
+		
+		if event.type == pygame.MOUSEBUTTONUP:
+			
+			# Control del movimimiento del minimapa --------------------
+			minimap.mouseButtonUp()
+			
+			# Control del movimimiento del chat ------------------------
+			chat.mouseButtonUp()
+			
+			#-------------------------------------
+			if con: continue
+		
+		if event.type == pygame.WINDOWLEAVE:
+			
+			# Control del movimimiento del minimapa --------------------
+			minimap.windowLeave()
+			
+			#-------------------------------------
+			if con: continue
+
+def movements(deltaTime):
+		
+		# Control de input del chat --------------
+		if chat.chat_text_active: return
+		#-----------------------------------------
+		
+		keys = pygame.key.get_pressed()
+		speed = player.ship.speed
+		speed *= deltaTime
+		
+		movements = False
+		degrees = 0
+		x = 0
+		y = 0
+		
+		leftMove  = keys[pygame.K_LEFT]  or keys[pygame.K_a]
+		rightMove = keys[pygame.K_RIGHT] or keys[pygame.K_d]
+		upMove    = keys[pygame.K_UP]    or keys[pygame.K_w]
+		downMove  = keys[pygame.K_DOWN]  or keys[pygame.K_s]
+		leftRightMove = leftMove and rightMove
+		upDownMove    = upMove and downMove
+		
+		if leftMove and not rightMove:
+			movements = True
+			if not upDownMove and (upMove or downMove):
+				if   upMove:   degrees = 90
+				elif downMove: degrees = 270
+				x -= utils.diagonal(speed)['x']
+			else:
+				degrees = 180
+				x -= speed
+		
+		if rightMove and not leftMove:
+			movements = True
+			if not upDownMove and (upMove or downMove):
+				if   upMove:   degrees = 90
+				elif downMove: degrees = 270
+				x += utils.diagonal(speed)['x']
+			else:
+				degrees = 0
+				x += speed
+		
+		if upMove and not downMove:
+			movements = True
+			if not leftRightMove and (leftMove or rightMove):
+				if leftMove:  degrees += 45
+				if rightMove: degrees -= 45
+				y -= utils.diagonal(speed)['y']
+			else:
+				degrees = 90
+				y -= speed
+		
+		if downMove and not upMove:
+			movements = True
+			if not leftRightMove and (leftMove or rightMove):
+				if leftMove:  degrees -= 45
+				if rightMove: degrees += 45
+				y += utils.diagonal(speed)['y']
+			else:
+				degrees = 270
+				y += speed
+		
+		if movements:
+			
+			# Control de seguimiento en el minimapa --------------------
+			if player.follow_pos: player.cancelFollowPos()
+			#-----------------------------------------------------------
+			
+			player.ship.time_hp_init = 0
+			player.angle = degrees
+			player.rotate(degrees)
+			player.x += round(x)
+			player.y += round(y)
+		else:
+			# Recibir HP bajo sus reglas -------------------------------
+			player.ship.healHP()
+			
+			# Control de seguimiento en el minimapa --------------------
+			player.followPos(speed)
+			#-----------------------------------------------------------
+		
+		# Recibir SP bajo sus reglas:
+		player.ship.healSP()
 
 # Rules ------------------------------------------
 
@@ -861,7 +1663,7 @@ def radioactiveZone():
 			player.ship.timeOnBorder = time.perf_counter()
 		if time.perf_counter() - player.ship.timeOnBorder > 2:
 			player.ship.timeOnBorder = time.perf_counter()
-			player.ship.recvDamage(config.rad_dmg, pct_sp=0)
+			player.ship.recvDamage(config.rad_dmg*(1-player.ship.pct_res_dmg_rad), pct_sp=0)
 	else:
 		if player.ship.timeOnBorder > 0:
 			player.ship.timeOnBorder = 0
@@ -942,8 +1744,12 @@ def selectEnemy(event):
 		posX, posY = event.pos
 		dists = []
 		for other_player_id in enemies:
+			
 			if other_player_id == player.id: continue
+			
 			other_player = enemies[other_player_id]
+			if other_player.ship.chp == 0: continue
+			
 			pposX = other_player.x+desX
 			pposY = other_player.y+desY
 			
@@ -1012,245 +1818,6 @@ def getUsername():
 			print(msg)
 	return name
 
-# Events -----------------------------------------
-
-def keysDown(event):
-	
-	if event.key == pygame.K_ESCAPE:						# ESC - Close Game
-		config.run = False
-	
-	if event.key == pygame.K_LSHIFT:						# LShift- Attack
-		if player.selected['id'] >= 0:
-			player.attacking = not player.attacking
-	
-	# Hide/Show ---------------
-	if event.key == pygame.K_TAB:
-		config.open_menu = not config.open_menu
-	
-	if not config.open_menu:
-		if event.key == pygame.K_o:								# O - Hide/Show Names
-			config.show['name'] = not config.show['name']
-		if event.key == pygame.K_p:								# P - Hide/Show HP-SP
-			config.show['hp-sp'] = not config.show['hp-sp']
-	
-	#--------------------------
-	
-	if event.key == pygame.K_F11:
-		
-		if not config.full_screen:
-			config.full_screen = True
-			config.windowed_pos = utils.curWinRect[:2] + utils.curWinSize
-			WIN = pygame.display.set_mode(
-				config.screen_full_size,
-				HWSURFACE | DOUBLEBUF | FULLSCREEN
-			)
-		else:
-			config.init_time_windowed = time.perf_counter()
-			config.full_screen = False
-			win_x = config.windowed_pos[0]
-			win_y = config.windowed_pos[1]
-			win_w = config.windowed_pos[2]
-			win_h = config.windowed_pos[3]
-			
-			config.RESOLUTION = (win_w, win_h)
-			WIN = pygame.display.set_mode(
-				(win_w, win_h),
-				HWSURFACE | DOUBLEBUF | RESIZABLE
-			)
-			
-			add_w  = utils.curWinRect[2]
-			add_w += abs(utils.curWinRect[0])
-			add_w -= utils.curWinSize[0]
-			
-			add_h  = utils.curWinRect[3]
-			add_h += abs(utils.curWinRect[1])
-			add_h -= utils.curWinSize[1]
-			
-			utils.moveWindow(win_x, win_y, win_w+add_w, win_h+add_h)
-			WIN = pygame.display.set_mode(
-				config.RESOLUTION,
-				HWSURFACE | DOUBLEBUF | RESIZABLE
-			)
-			
-	#--------------------------
-	
-	if event.key == pygame.K_1:
-		if config.open_menu:
-			config.pos_tab_menu = 1
-	if event.key == pygame.K_2:
-		if config.open_menu:
-			config.pos_tab_menu = 2
-	if event.key == pygame.K_3:
-		if config.open_menu:
-			config.pos_tab_menu = 3
-	if event.key == pygame.K_4:
-		if config.open_menu:
-			config.pos_tab_menu = 4
-	if event.key == pygame.K_5:
-		if config.open_menu:
-			config.pos_tab_menu = 5
-	if event.key == pygame.K_6:
-		if config.open_menu:
-			config.pos_tab_menu = 6
-	if event.key == pygame.K_7:
-		if config.open_menu:
-			config.pos_tab_menu = 7
-	if event.key == pygame.K_8:
-		if config.open_menu:
-			config.pos_tab_menu = 8
-	if event.key == pygame.K_9:
-		if config.open_menu:
-			config.pos_tab_menu = 9
-	if event.key == pygame.K_0:
-		if config.open_menu:
-			config.pos_tab_menu = 0
-	
-	#--------------------------
-	if event.key == pygame.K_j:								# J - Speed level down
-		if player.ship.spd_lvl > 0:
-			cost = player.ship.spd_lvl
-			player.creds += cost
-			player.ship.speedLevelUP(-10)
-	if event.key == pygame.K_k:								# J - Speed level up
-		# ~ cost = (player.ship.spd_lvl+1)
-		# ~ if player.creds >= cost:
-			# ~ player.creds -= cost
-			player.ship.speedLevelUP(10)
-	
-	if event.key == pygame.K_u:								# U - HP level up
-		cost = (player.ship.lhp+1) * 10
-		if player.creds >= cost:
-			player.creds -= cost
-			player.ship.levelUpHP()
-	if event.key == pygame.K_i:								# I - SP level up
-		cost = (player.ship.lsp+1) * 10
-		if player.creds >= cost:
-			player.creds -= cost
-			if not player.ship.shield_unlocked:
-				player.ship.shield_unlocked = True
-			player.ship.levelUpSP()
-	
-	if event.key == pygame.K_h:								# H - Dmg level up
-		cost = (player.ship.weapon.lvl+1)
-		if player.creds >= cost:
-			player.creds -= cost
-			player.ship.weapon.levelUpDmg()
-	
-	if event.key == pygame.K_l:								# L - receive 100 Dmg
-		player.ship.recvDamage(100, pct_sp=1, mult=1)
-
-def detectEvents():
-	
-	for event in pygame.event.get():
-		
-		if event.type == pygame.TEXTINPUT: continue
-		
-		if event.type == pygame.QUIT:
-			config.run = False
-		
-		if event.type == VIDEORESIZE:
-			if not config.RESOLUTION == event.size:
-				if not config.full_screen \
-				and time.perf_counter() - config.init_time_windowed > 1:
-					mw = config.min_w
-					mh = config.min_h
-					w, h = event.size
-					if w < mw: w = mw
-					if h < mh: h = mh
-					config.RESOLUTION = (w, h)
-					WIN = pygame.display.set_mode((w, h), HWSURFACE | DOUBLEBUF | RESIZABLE)
-				else:
-					config.RESOLUTION = event.size
-		
-		if event.type == pygame.KEYDOWN:
-			keysDown(event)
-		
-		# ~ if event.type == pygame.MOUSEMOTION:
-		
-		if event.type == pygame.MOUSEBUTTONDOWN:
-			if not config.open_menu:
-				players = selectEnemy(event)
-				if players: updateOtherPlayers(players)
-
-def movements(deltaTime):
-		
-		keys = pygame.key.get_pressed()
-		speed = player.ship.speed
-		speed *= deltaTime
-		
-		movements = False
-		degrees = 0
-		x = 0
-		y = 0
-		
-		leftMove  = keys[pygame.K_LEFT]  or keys[pygame.K_a]
-		rightMove = keys[pygame.K_RIGHT] or keys[pygame.K_d]
-		upMove    = keys[pygame.K_UP]    or keys[pygame.K_w]
-		downMove  = keys[pygame.K_DOWN]  or keys[pygame.K_s]
-		leftRightMove = leftMove and rightMove
-		upDownMove    = upMove and downMove
-		# ~ player_curr_pos = int(player.x/config.posdiv), int(player.y/config.posdiv)
-		
-		if leftMove and not rightMove:
-			# ~ player.curr_pos = player_curr_pos
-			movements = True
-			if not upDownMove and (upMove or downMove):
-				if   upMove:   degrees = 90
-				elif downMove: degrees = 270
-				x -= utils.diagonal(speed)[0]
-			else:
-				degrees = 180
-				x -= speed
-		
-		if rightMove and not leftMove:
-			# ~ if player.curr_pos[0]+2 < player_curr_pos[0]:
-				# ~ x = player.curr_pos[0]
-			# ~ else:
-				# ~ player.curr_pos = player_curr_pos
-				movements = True
-				if not upDownMove and (upMove or downMove):
-					if   upMove:   degrees = 90
-					elif downMove: degrees = 270
-					x += utils.diagonal(speed)[0]
-				else:
-					degrees = 0
-					x += speed
-		
-		if upMove and not downMove:
-			# ~ player.curr_pos = player_curr_pos
-			movements = True
-			if not leftRightMove and (leftMove or rightMove):
-				if leftMove:  degrees += 45
-				if rightMove: degrees -= 45
-				y -= utils.diagonal(speed)[1]
-			else:
-				degrees = 90
-				y -= speed
-		
-		if downMove and not upMove:
-			# ~ player.curr_pos = player_curr_pos
-			movements = True
-			if not leftRightMove and (leftMove or rightMove):
-				if leftMove:  degrees -= 45
-				if rightMove: degrees += 45
-				y += utils.diagonal(speed)[1]
-			else:
-				degrees = 270
-				y += speed
-		
-		if movements:
-			player.ship.time_hp_init = 0
-			player.angle = degrees
-			player.rotate(degrees)
-			player.x += round(x, 2)
-			player.y += round(y, 2)
-		else:
-			# Recibir HP bajo sus reglas:
-			player.ship.healHP()
-		
-		# Recibir SP bajo sus reglas:
-		player.ship.healSP()
-
 # Update Data ------------------------------------
 
 def updateOtherPlayers(players):
@@ -1278,35 +1845,32 @@ def updateOtherPlayers(players):
 
 # Menu -------------------------------------------
 
-def drawMenuTab3():
+def drawMenuTabConstellations(x, y, w, h):				# Tab 3
 	pass
 
-def drawMenuTab2():
-	pass
-
-def drawMenuTabInfo(x, y, w, h):
+def drawMenuTabEnhance(x, y, w, h):						# Tab 2
 	
-	BLANCO = config.COLOR['Cyan']
+	CYAN   = config.COLOR['Cyan']
 	VERDEC = config.COLOR['Verde Claro']
-	font  = config.FONT['Inc-R 16']
-	despX = 100			# Desplazamiento en X
-	despY = 30			# Desplazamiento en Y
+	font   = config.FONT['Inc-R 16']
+	despX  = 100			# Desplazamiento en X
+	despY  = 30				# Desplazamiento en Y
 	
 	texts = [
-		('Experience',                         font, BLANCO),
+		('Experience',                         font, CYAN),
 		(str(player.exp),                      font, VERDEC),
-		('Credits',                            font, BLANCO),
+		('Credits',                            font, CYAN),
 		(str(player.creds),                    font, VERDEC),
-		('Weapon',                             font, BLANCO),
+		('Weapon',                             font, CYAN),
 		(f'{str(player.ship.weapon.name)} '\
 			f'({player.ship.weapon.lvl})',     font, VERDEC),
-		('Damage',                             font, BLANCO),
+		('Damage',                             font, CYAN),
 		(str(player.ship.weapon.dmg),          font, VERDEC),
-		('Speed',                              font, BLANCO),
+		('Speed',                              font, CYAN),
 		(str(player.ship.speed),               font, VERDEC),
-		('FPS',                                font, BLANCO),
+		('FPS',                                font, CYAN),
 		(str(config.fps),                      font, VERDEC),
-		('Coords',                             font, BLANCO),
+		('Coords',                             font, CYAN),
 		('({},{})'.format(
 				int(player.x/config.posdiv),
 				int(player.y/config.posdiv)
@@ -1314,24 +1878,63 @@ def drawMenuTabInfo(x, y, w, h):
 	]
 	
 	# Draw background ----------------------------
-	positions = [
-		x,
-		y,
-		w,
-		h
-	]
+	# ~ positions = [ x, y, w, h ]
 	
-	drawRoundrect('background tab', positions, config.COLOR['Verde F'],
-		3, 1, (*config.COLOR['Verde S'], 50)
-	)
+	# ~ drawRoundrect('background tab', positions, config.COLOR['Verde F'],
+		# ~ 3, 1, (*config.COLOR['Verde S'], 50)
+	# ~ )
 	
 	# Draw texts ---------------------------------
 	x = x+20
 	y = y+20
 	for i, text in enumerate(texts):
 		WIN.blit(renderText(*text), (x+(despX*(i%2)), y+(despY*(i//2))))
+
+def drawMenuTabInfo(x, y, w, h):						# Tab 1
 	
-	#<--- Continue: Arreglar problema con los FPS por causa de los roundRects.
+	CYAN   = config.COLOR['Cyan']
+	VERDEC = config.COLOR['Verde Claro']
+	font   = config.FONT['Inc-R 16']
+	despX  = 120			# Desplazamiento en X
+	despY  = 30				# Desplazamiento en Y
+	
+	texts = [
+		('Experience',                         font, CYAN  ),
+		(str(player.exp),                      font, VERDEC),
+		('Credits',                            font, CYAN  ),
+		(str(player.creds),                    font, VERDEC),
+		('Weapon',                             font, CYAN  ),
+		(f'{str(player.ship.weapon.name)} '\
+			f'({player.ship.weapon.lvl})',     font, VERDEC),
+		('Damage',                             font, CYAN  ),
+		(str(player.ship.weapon.dmg),          font, VERDEC),
+		('Speed',                              font, CYAN  ),
+		(str(player.ship.speed),               font, VERDEC),
+		('FPS',                                font, CYAN  ),
+		(str(config.fps),                      font, VERDEC),
+		('Coords',                             font, CYAN  ),
+		('({},{})'.format(
+				int(player.x/config.posdiv),
+				int(player.y/config.posdiv)
+			).ljust(11),                       font, VERDEC),
+		('Rad. rest.',                         font, CYAN  ),
+		('{}%'.format(str(
+				player.ship.pct_res_dmg_rad*100
+			)),                                font, VERDEC)
+	]
+	
+	# Draw background ----------------------------
+	# ~ positions = [ x, y, w, h ]
+	
+	# ~ drawRoundrect('background tab', positions, config.COLOR['Verde F'],
+		# ~ 3, 1, (*config.COLOR['Verde S'], 50)
+	# ~ )
+	
+	# Draw texts ---------------------------------
+	x = x+20
+	y = y+20
+	for i, text in enumerate(texts):
+		WIN.blit(renderText(*text), (x+(despX*(i%2)), y+(despY*(i//2))))
 
 def drawMenu():
 	
@@ -1418,8 +2021,98 @@ def drawMenu():
 		]
 		
 		if   config.pos_tab_menu == 1: drawMenuTabInfo(*positions)
-		# ~ elif config.pos_tab_menu == 2: drawMenuTab2(*positions)
-		# ~ elif config.pos_tab_menu == 3: drawMenuTab3(*positions)
+		elif config.pos_tab_menu == 2: drawMenuTabEnhance(*positions)
+		elif config.pos_tab_menu == 3: drawMenuTabConstellations(*positions)
+
+# Global Chat ------------------------------------
+
+def drawChatTabGlobal():
+	
+	# Draw Global Chat Background ----------------
+	pos = chat.chat_inner_pos
+	drawRoundrect('global chat background', pos, config.COLOR['Verde F'],
+		3, 1, (*config.COLOR['Negro'], 100-chat.pct_tr)
+	)
+	
+	# Draw Global Chat Name ----------------------
+	font = config.FONT['Inc-R 14']
+	text = renderText('Global', font, config.COLOR['Blanco'], 'bold')
+	if not chat.chat_global_name_rect == (text.get_width(), text.get_height()):
+		chat.chat_global_name_rect = (text.get_width(), text.get_height())
+	WIN.blit(text, (pos[0], pos[1]-text.get_height()-1))
+	
+	# Draw Messages in Global Chat ---------------
+	BLANCO = config.COLOR['Blanco']
+	CYAN   = config.COLOR['Cyan']
+	x, y = pos[0]+4, pos[0]+text.get_height()
+	font = config.FONT['Inc-R {}'.format(chat.chat_msg_tam)]
+	
+	# Obtiene los mensajes recortados para evitar que se desborden
+	temp = renderText(' ', font, CYAN)
+	plus = 2
+	qty = int((chat.chat_h-45)//(temp.get_height()+plus))	# Se adapta a lo alto del chat para limitar las lineas en el
+	tam = int((chat.chat_w-20)// temp.get_width())			# Se adapta al ancho del chat para limitar los caracteres por linea
+	del temp
+	msgs = []
+	
+	for user, msg in chat.messages['global'][-qty:]:
+		for i, part in enumerate(utils.splitText(user+':'+msg, tam)):
+			if not i == 0: user = ''
+			else: part = part[len(user)+1:]
+			msgs.append((user, part))
+	
+	# Muestra en pantalla los mensajes de forma ordenada
+	add  = 1
+	for user, msg in msgs[-qty:]:
+		
+		if user:
+			add = 1
+			ruser = renderText(user+':', font, CYAN, 'bold')
+			y += ruser.get_height()+add
+			WIN.blit(ruser, (x,y))
+			x += ruser.get_width()+2
+			y -= ruser.get_height()+add
+		else:
+			add = 0
+		
+		rmsg = renderText(msg, font, BLANCO)
+		y += rmsg.get_height()+add
+		WIN.blit(rmsg, (x,y))
+		
+		x = pos[0]+4
+		y += 1
+	#---------------------------------------------
+
+def drawChat():
+	
+	# Draw Chat Background -----------------------
+	drawRoundrect('chat background', chat.chat_pos, config.COLOR['Verde F'],
+		3, 1, (*config.COLOR['Verde S'], 100)
+	)
+	
+	# Draw Chat Name -----------------------------
+	font = config.FONT['Inc-R 14']
+	text = renderText(chat.chat_name, font, config.COLOR['Blanco'], 'bold')
+	if not chat.chat_name_rect == (text.get_width(), text.get_height()):
+		chat.chat_name_rect = (text.get_width(), text.get_height())
+		print(chat.chat_name_rect)
+	WIN.blit(text, (chat.chat_x, chat.chat_y-text.get_height()))
+	
+	# Draw Global Chat Messages ------------------
+	if chat.chat_tab == 1:
+		drawChatTabGlobal()
+	
+	# Draw Chat Input Text Background ------------
+	drawRoundrect('chat write text', chat.chat_input_pos, config.COLOR['Verde F'],
+		3, 1, (*config.COLOR['Verde S'], 20)
+	)
+	
+	# Draw Chat Input Text -----------------------
+	font = config.FONT['Inc-R 14']
+	limit = (chat.chat_w-24)//7
+	text = renderText(chat.chat_text[-limit:], font, config.COLOR['Blanco'])
+	pos = chat.chat_input_pos
+	WIN.blit(text, (pos[0]+4, pos[1]+2))
 
 # Window -----------------------------------------
 
@@ -1429,8 +2122,7 @@ def drawRoundrect(rect_name, pos, bcolor, ba, br, bgcolor):
 	# bcolor: color del borde
 	# ba: anchura del borde
 	# br: redondeado del borde
-	# bgcolor: Color del fondo
-	# tr: Transparencia de 0 a 255
+	# bgcolor: Color del fondo y transparencia de 0 a 255
 	
 	if not config.roundRects.get(rect_name):
 		rr_img, rr_rect = utils.roundRect(pos, bcolor, ba, br, bgcolor)
@@ -1444,41 +2136,25 @@ def drawRoundrect(rect_name, pos, bcolor, ba, br, bgcolor):
 	WIN.blit(rr_img, rr_rect)
 
 def renderText(text, font, color, _type=''):
-	
-	if 'bold' in _type:   font.set_bold(True)
-	elif font.get_bold(): font.set_bold(False)
-	if 'italic' in _type:   font.set_italic(True)
-	elif font.get_italic(): font.set_italic(False)
+	if 'bold' in _type:        font.set_bold(True)
+	elif font.get_bold():      font.set_bold(False)
+	if 'italic' in _type:      font.set_italic(True)
+	elif font.get_italic():    font.set_italic(False)
 	if 'underline' in _type:   font.set_underline(True)
 	elif font.get_underline(): font.set_underline(False)
-	
-	rendered_text = font.render(text, config.antialiasing, color)
-	return rendered_text
+	return font.render(text, config.antialiasing, color)
 
 def drawMinimap(map_enemies_pos):
 	
-	# Minimap positions
-	minimap_pos = [
-		config.map_x, config.map_y,
-		config.map_w, config.map_h
-	]
-	x = (player.x/config.posdiv) / config.MAP[config.map_name]['x'] * config.map_w + config.map_x
-	y = (player.y/config.posdiv) / config.MAP[config.map_name]['y'] * config.map_h + config.map_y
-	
-	scr_pos = [
-		x-2-((config.CENTER['x']/config.posdiv) / config.MAP[config.map_name]['x'] * config.map_w),
-		y-2-((config.CENTER['y']/config.posdiv) / config.MAP[config.map_name]['y'] * config.map_h),
-		4+(config.W/config.posdiv) / config.MAP[config.map_name]['x'] * config.map_w,
-		4+(config.H/config.posdiv) / config.MAP[config.map_name]['y'] * config.map_h
-	]
+	x, y = minimap.player_pos
 	
 	# Draw player screen on minimap
-	drawRoundrect('screen on minimap', scr_pos, config.COLOR['Verde S'],
+	drawRoundrect('screen on minimap', minimap.scrPosOnMap(x,y), config.COLOR['Verde S'],
 		2, 1, (*config.COLOR['Verde F'], 100)
 	)
 	
 	# Draw minimap background
-	drawRoundrect('minimap', minimap_pos, config.COLOR['Verde F'],
+	drawRoundrect('minimap', minimap.map_pos, config.COLOR['Verde F'],
 		3, 1, (*config.COLOR['Verde S'], 150)
 	)
 	
@@ -1487,15 +2163,31 @@ def drawMinimap(map_enemies_pos):
 	
 	# Draw Map Name
 	font = config.FONT['Retro 14']
-	text = config.map_name
+	text = minimap.map_name
 	text = renderText(text, font, config.COLOR['Blanco'])
-	#<---- continue: Seleccionar nombre de mapa y mover el minimapa: config.map_x, config.map_y.
-	WIN.blit(text, (config.map_x, config.map_y-text.get_height()))
+	if not minimap.map_name_rect == (text.get_width(), text.get_height()):
+		minimap.map_name_rect = (text.get_width(), text.get_height())
+	WIN.blit(text, (minimap.map_x, minimap.map_y-text.get_height()))
+	
+	# Dibuja de desplazamiento mediante clic en el minimapa:
+	if player.follow_pos:
+		pass
+	
+	# Control del tamaño del minimapa ----------------------
+	font24 = config.FONT['Wendy 24']
+	color_m = minimap.btn_col_off if minimap.map_size == 0 else minimap.btn_col
+	color_p = minimap.btn_col_off if minimap.map_size == minimap.map_size_max else minimap.btn_col
+	text1 = renderText('-', font24, config.COLOR[color_m])
+	text2 = renderText('+', font24, config.COLOR[color_p])
+	minimap.btn_minus = [(text1.get_width(),text1.get_height()),(minimap.map_x+minimap.map_w-text1.get_width()-text2.get_width()-15, minimap.map_y-text1.get_height())]
+	minimap.btn_plus  = [(text2.get_width(),text2.get_height()),(minimap.map_x+minimap.map_w-text2.get_width()-5, minimap.map_y-text2.get_height())]
+	WIN.blit(text1, minimap.btn_minus[1])
+	WIN.blit(text2, minimap.btn_plus[1])
 	
 	# Draw enemies positions on minimap
 	for x, y in map_enemies_pos:
-		x = (x/config.posdiv) / config.MAP[config.map_name]['x'] * config.map_w + config.map_x
-		y = (y/config.posdiv) / config.MAP[config.map_name]['y'] * config.map_h + config.map_y
+		x = (x/config.posdiv) / config.MAP[minimap.map_name]['x'] * minimap.map_w + minimap.map_x
+		y = (y/config.posdiv) / config.MAP[minimap.map_name]['y'] * minimap.map_h + minimap.map_y
 		pygame.draw.circle(WIN, config.COLOR['Rojo'], (x,y), 1, 1)
 
 def drawShipAndData(ship, des, name_color):
@@ -1516,6 +2208,15 @@ def drawShipAndData(ship, des, name_color):
 			int(ship.y)+des[1]
 		)
 	)
+	
+	# Draw the outline ---------------------------
+	if player.id == ship.id:
+		color = config.COLOR['Rojo']
+		# ~ utils.perfectOutline(ship.img, rect, color, alpha=25, br=4)			# Contorno Negro
+		utils.perfectOutline(ship.img, rect, color, alpha=25, br=3)			# Contorno Negro
+		# ~ utils.perfectOutline(ship.img, rect, color, alpha=25, br=2)			# Contorno Negro
+		utils.perfectOutline(ship.img, rect, color, alpha=25, br=1)			# Contorno Negro
+	
 	WIN.blit(ship.img, rect)
 	
 	desp = 50
@@ -1601,8 +2302,7 @@ def drawShipAndData(ship, des, name_color):
 			
 			x = int(ship.x)+des[0] - width/2
 			y = int(ship.y)+des[1] - desp
-			# ~ if i == 1:
-				# ~ print(cp, '/', p)
+			
 			pct = cp / p
 			position = [x, y, int(width*pct), height]
 			drawRoundrect(name+' bg', position, config.COLOR['Verde F'],
@@ -1850,6 +2550,10 @@ def redrawWindow():
 	
 	drawMinimap(map_enemies_pos)
 	
+	# Draw global chat =================================================
+	
+	drawChat()
+	
 	# Draw other info on main layer data: ==============================
 	
 	#drawOtherInfo(game_time)
@@ -1867,6 +2571,7 @@ def createWindow():
 	# Make window start in top left hand corner
 	
 	os.environ['SDL_VIDEO_WINDOW_POS'] = f'{10},{40}'
+	# ~ os.environ['SDL_VIDEO_WINDOW_POS'] = f'{840},{40}'
 	# ~ os.environ['SDL_VIDEO_CENTERED'] = '1'
 	
 	# Setup pygame window
@@ -1904,9 +2609,16 @@ def main():
 	players = server.send('get')
 	player.loadData(players)
 	
+	chat.messages = server.send('get msg')
+	
 	#---------------------------------------------
 	
 	while config.run:
+		
+		# Control de input del chat --------------
+		if chat.perSecond(3):
+			chat.messages = server.send('get msg')
+		#-----------------------------------------
 		
 		players, game_time = server.send(player.data)		# Envia datos al servidor y recibe la información de los otros jugadores
 		
@@ -1954,52 +2666,82 @@ def close():
 
 #=======================================================================
 
-# start game
+# Start Game
 main()
 
 #=======================================================================
-# Añadido el: 30/08/2021
-# + Agregado un pequeño recuadro con el campo de visión del jugador en el minimapa.
-# + Mejorada la IA de Strangers.
-# 
-# Añadido el: 31/08/2021
-# + Agregados nivels de Strangers.
-# + Agregados Strangers tipo Iken por nivel (Épsilon 0~28, Delta 28~56, Gamma 56~84, Beta 84~112, Alfa 112+)
-# + Agregado costo de aumento de niveles (HP, SP, Dmg o Speed).
-# 
-# Añadido el: 01/09/2021
-# + Agregado Menú base del Jugador.
-# + Añadida Cambio a Pantalla completa o Modo Ventana con F11
-# 
-# Añadido el: 03/09/2021
-# + Agregada base de menú
-# 
 # Añadido el: 06/09/2021
-# + Solucionado problema de FPS con los roundRects
-# + Agregada función de parábola para le aumento de velocidad (inicial aumenta mucho, final aumento poco)
-# + Agregado nivel máximo de velocidad: 112
-# + Solucionado problema al cambiar de pantalla completa a modo ventana que no se podia modificar el tamaño de la ventana.
-# + Solucionado problema con el deltaTime, ahora los cambios en la ventana no interfieren con el movimiento al multiplicar la velocidad por el delta (al pausar la ventana el delta sigue aumentando su tiempo constantemente)
-# + Solucionado problema al causar daño al enemigo, al tener poca vida el enemigo el daño causado por el jugador disminuía y se hacia tedioso derrotarlos.
+# + Agregado el poder seleccionar el nombre del mapa y mover el minimapa.
+# + Mejorado el ataque de los Strangers.
+# 
+# Añadido el: 07/09/2021
+# + Mejorada el posicionamiento del minimapa por cuadrante en la pantalla al cambiar la resolución.
+#   El minimapa mantendra la relación con los bordes aunque cambie la resolución de la pantalla,
+#   basado en el cuadrante en que se encuentre:
+#     Si esta en el primer  cuadrante de la pantalla se movera solo en X. map_x > width//2 & map_y < hight//2
+#     Si esta en el segundo cuadrante de la pantalla no se moverá.        map_x < width//2 & map_y < hight//2
+#     Si esta en el tercer  cuadrante de la pantalla se moverá solo en Y. map_x < width//2 & map_y > hight//2
+#     Si esta en el cuarto  cuadrante de la pantalla se moverá en X e Y.  map_x > width//2 & map_y > hight//2
+# 
+# Añadido el: 08/09/2021
+# + Todos los valores para el minimapa ahora estan en su propia clase 'Minimapa'.
+# + Todos los valores para el cambio de resolucion movido a la clase 'Config'.
+# 
+# Añadido el: 09/09/2021
+# + Agregados los botones para cambiar el tamaño del minimapa. El minimapa cambia de 25x20 píxeles por clic,
+#     pasando de un minimo de 150x120 a un máximo de 300x240 píxeles.
+# + El minimapa se adapta al cambio de tamaño sin desbordarse y el aumento siempre apunta al centro de la pantalla (basado en cuadrante de la pantalla en el que esté).
+# 
+# Añadido el: 13/09/2021
+# + Código un poco más optimizado en los movimientos de los objetos.
+# + Agregado desplazamiento con clic en mini mapa.
+# + Agregado sistema de porcentaje de resistencia al daño por radiación.
+# + Solucionado: Al derrotar enemigos se podian volver a seleccionar antes de que desaparecieran.
+# + Solucionado: Al seleccionar un enemigo y desplazarse desde el minimapa, el movimiento de avance esta mal.
+# + Agregada base de Chat
+# 
+# Añadido el: 14/09/2021
+# + Agregado poder escribir en el chat.
+# + Agregado poder mandar los mensajes al servidor.
+# + Agregado poder recibir los mensajes dle servidor.
+# + Agregado y adaptado sistema para cambiar tamaño de fuente del chat de entre 12 y 18.
+# + Agregado y adaptado sistema para cambiar tamaño de la venta de chat y que se ajuste el texto.
+# + (En progreso) Agregado poder mover la ventana de chat.
+# + (En progreso) Agregado poder manipular el tamaño ventana de chat usando el mouse.
 # 
 # Para futuro desarrollo:
-# + [Ok] Agregar recuadro semitransparente para crear un menú
-# + [] Agregar el poder seleccionar el nombre del mapa y mover el minimapa.
-# + [] Agregar desplazamiento con clic en mini mapa
-# + [] Agregar Zona Segura
-# + [] Agregar tiempo de inmortalidad al iniciar sesión.
-# + [] Agregar subida de niveles a menú
+# + [Ok] Agregar el poder seleccionar el nombre del mapa y mover el minimapa.
+# + [Ok] Agregar botones '+' y '-' para cambiar el tamaño del minimapa.
+# + [Ok] Agregar desplazamiento con clic en mini mapa.
+# + [Ok] Agregar sistema resistencia a la zona radioactiva.
+# + [Ok] Agregar Chat Global.
 # + [] Agregar Loot random en mapa.
-# + [] Agregar Chat Global.
 # + [] Agregar sistema de constelaciones aleatorias para mejoras aleatorias (HP, SP, Dmg, Speed).
+# + [] Agregar tiempo de inmortalidad al iniciar sesión.
+# + [] Agregar más variedad enemigos.
+# + [] Agregar más mapas.
+# + [] Agregar portales entre mapas.
+# + [] Agregar distintas armas.
+# + [] Agregar limite de municiónes por armas.
+# + [] Agregar laseres visuales.
+# + [] Agregar Efectos de Sonido (SFX).
+# + [] Agregar Zona Segura.
+# + [] Agregar Menú vinculado a zona segura para recargas y mejoras.
+# + [] Diseñar contenido del menú.
+# + [] Agregar subida de niveles en el menú.
 # + [] Los otros personajes (NPCs y Otros jugadores) deberán seguir coordenadas para generar fluides con los movimientos en la pantalla del jugador.
 # + [] Agregar base de datos de usuarios
 # + [] Agregar inicio de sesión.
+# + [] Agregar misiles.
+# + [] Agregar animación para los misiles.
+# + [] Agregar variación de daño (con posibilidad de fallo).
+# + [] Agregar Compra de objetos para la resistencia a la zona radioactiva.
 # 
 # Bugs Detectados:
-# + [Ok] Problema con los FPS a alta resolucion por causa de los roundRects en el menú.
-# + [Ok] Al cambiar de pantalla completa a modo ventana no se puede cambiar la resolución
-# + [Ok] Cuando la ventana sufre cambios el personaje salta de posicion si va en movimiento por multiplicar el delta por la velocidad
-# + [Ok] El daño causado al llegar a un minimo la vida del enemigo, el daño disminuye de forma extraña.
+# + [Ok] Al seleccionar un enemigo y desplazarse desde el minimapa, el movimiento de avance esta mal.
+# + [Ok] Al seleccionar agrandar o encojer el minimapa se detecta el clic y afecta el movimiento.
+# + [] Al atacar un enemigo, si no entras en su rango de visión, no te ataca.
 # + [] El recuadro de pantalla en el minimapa, se desborda.
 # + [] Daño causado de enemigos a enemigos no carga correctamente.
+# + [] Cuando un enemigo te ataca no se ve correctamente la animación.
+# + [] Cambiar color negro absoluto de los pixel arts. Se elimina al cargar la imagen (remplaza por vacio como el fondo)
