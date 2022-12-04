@@ -2,7 +2,7 @@
 otros/
 img/Pixel Arts/
 img/weapons/
-*-2.py
+temp*.py
 *-big*.png
 
 # Byte-compiled / optimized / DLL files
