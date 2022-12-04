@@ -449,6 +449,7 @@ class Player:
                 # ~ lvl = self.ship.weapon.lvl - player['ship']['weapon']['lvl']
         ''		# ~ self.ship.weapon.levelUpDmg(lvl)
     
+    # TODO: Eliminar color negro absoluto (0,0,0) en diseño de naves.
     def loadImage(self, filename, transparent=True):
         try: image = pygame.image.load(filename)
         except pygame.error as message: raise SystemError

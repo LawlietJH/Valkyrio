@@ -327,3 +327,4 @@ class Chat:
             self.quadrant(*self.settings.RESOLUTION)
             
             self.limitMove()
+
