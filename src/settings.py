@@ -7,7 +7,7 @@ import time
 
 class Settings:
     
-    def __init__(self, utils, RESOLUTION=(1280, 720)):
+    def __init__(self, utils, RESOLUTION=(1280, 720), is_client=True):
         
         self.utils = utils
 
@@ -43,46 +43,48 @@ class Settings:
             'Verde F':      (  0,100, 30),
         }
         
-        self.FONT = {
-            'Inc-R 12': pygame.font.Font('font/Inconsolata-Regular.ttf', 12),
-            'Inc-R 13': pygame.font.Font('font/Inconsolata-Regular.ttf', 13),
-            'Inc-R 14': pygame.font.Font('font/Inconsolata-Regular.ttf', 14),
-            'Inc-R 15': pygame.font.Font('font/Inconsolata-Regular.ttf', 15),
-            'Inc-R 16': pygame.font.Font('font/Inconsolata-Regular.ttf', 16),
-            'Inc-R 18': pygame.font.Font('font/Inconsolata-Regular.ttf', 18),
-            'Inc-R 20': pygame.font.Font('font/Inconsolata-Regular.ttf', 20),
-            'Inc-R 24': pygame.font.Font('font/Inconsolata-Regular.ttf', 24),
-            'Retro 12': pygame.font.Font('font/Retro Gaming.ttf', 12),
-            'Retro 14': pygame.font.Font('font/Retro Gaming.ttf', 14),
-            'Retro 16': pygame.font.Font('font/Retro Gaming.ttf', 16),
-            'Retro 18': pygame.font.Font('font/Retro Gaming.ttf', 18),
-            'Retro 20': pygame.font.Font('font/Retro Gaming.ttf', 20),
-            'Retro 24': pygame.font.Font('font/Retro Gaming.ttf', 24),
-            'Wendy 12': pygame.font.Font('font/Wendy.ttf', 12),
-            'Wendy 14': pygame.font.Font('font/Wendy.ttf', 14),
-            'Wendy 16': pygame.font.Font('font/Wendy.ttf', 16),
-            'Wendy 18': pygame.font.Font('font/Wendy.ttf', 18),
-            'Wendy 20': pygame.font.Font('font/Wendy.ttf', 20),
-            'Wendy 24': pygame.font.Font('font/Wendy.ttf', 24),
-            'Comic 12': pygame.font.SysFont('comicsans', 12),
-            'Comic 14': pygame.font.SysFont('comicsans', 14),
-            'Comic 16': pygame.font.SysFont('comicsans', 16),
-            'Comic 18': pygame.font.SysFont('comicsans', 18),
-            'Comic 20': pygame.font.SysFont('comicsans', 20),
-            'Comic 24': pygame.font.SysFont('comicsans', 24)
-        }	# Diccionario de Fuentes.
-        
-        self.MUSIC = {
-            'JNATHYN - Genesis': 'sound/music/JNATHYN - Genesis.mp3'
-        }
-        
-        # Sound Effects
-        self.SFX = {}
-        
-        # Music
-        self.music = pygame.mixer.music
-        self.sound = pygame.mixer.Sound
-        
+        if is_client:
+            
+            self.FONT = {
+                'Inc-R 12': pygame.font.Font('src/font/Inconsolata-Regular.ttf', 12),
+                'Inc-R 13': pygame.font.Font('src/font/Inconsolata-Regular.ttf', 13),
+                'Inc-R 14': pygame.font.Font('src/font/Inconsolata-Regular.ttf', 14),
+                'Inc-R 15': pygame.font.Font('src/font/Inconsolata-Regular.ttf', 15),
+                'Inc-R 16': pygame.font.Font('src/font/Inconsolata-Regular.ttf', 16),
+                'Inc-R 18': pygame.font.Font('src/font/Inconsolata-Regular.ttf', 18),
+                'Inc-R 20': pygame.font.Font('src/font/Inconsolata-Regular.ttf', 20),
+                'Inc-R 24': pygame.font.Font('src/font/Inconsolata-Regular.ttf', 24),
+                'Retro 12': pygame.font.Font('src/font/Retro Gaming.ttf', 12),
+                'Retro 14': pygame.font.Font('src/font/Retro Gaming.ttf', 14),
+                'Retro 16': pygame.font.Font('src/font/Retro Gaming.ttf', 16),
+                'Retro 18': pygame.font.Font('src/font/Retro Gaming.ttf', 18),
+                'Retro 20': pygame.font.Font('src/font/Retro Gaming.ttf', 20),
+                'Retro 24': pygame.font.Font('src/font/Retro Gaming.ttf', 24),
+                'Wendy 12': pygame.font.Font('src/font/Wendy.ttf', 12),
+                'Wendy 14': pygame.font.Font('src/font/Wendy.ttf', 14),
+                'Wendy 16': pygame.font.Font('src/font/Wendy.ttf', 16),
+                'Wendy 18': pygame.font.Font('src/font/Wendy.ttf', 18),
+                'Wendy 20': pygame.font.Font('src/font/Wendy.ttf', 20),
+                'Wendy 24': pygame.font.Font('src/font/Wendy.ttf', 24),
+                'Comic 12': pygame.font.SysFont('comicsans', 12),
+                'Comic 14': pygame.font.SysFont('comicsans', 14),
+                'Comic 16': pygame.font.SysFont('comicsans', 16),
+                'Comic 18': pygame.font.SysFont('comicsans', 18),
+                'Comic 20': pygame.font.SysFont('comicsans', 20),
+                'Comic 24': pygame.font.SysFont('comicsans', 24)
+            }	# Diccionario de Fuentes.
+            
+            self.MUSIC = {
+                'JNATHYN - Genesis': 'src/sound/music/JNATHYN - Genesis.mp3'
+            }
+            
+            # Sound Effects
+            self.SFX = {}
+            
+            # Music
+            self.music = pygame.mixer.music
+            self.sound = pygame.mixer.Sound
+            
         # Configs: -----------------------------------------------------
         
         self.show = {
@@ -101,7 +103,7 @@ class Settings:
         
         self.WEAPON = {
             'Laser-mid': {
-                'path': 'img/weapons/laser.png',
+                'path': 'src/img/weapons/laser.png',
                 'dmg': 50,			# Base damage
                 'inc': 5,			# Damage increment per level
                 'ammo': 1000,		# Ammunition
@@ -110,7 +112,7 @@ class Settings:
                 'mult': 1			# Damage multiplier
             },
             'Laser': {
-                'path': 'img/weapons/laser.png',
+                'path': 'src/img/weapons/laser.png',
                 'dmg': 100,			# Base damage
                 'inc': 10,			# Damage increment per level
                 'ammo': 1000,		# Ammunition
@@ -119,7 +121,7 @@ class Settings:
                 'mult': 1			# Damage multiplier
             },
             'Plasma': {
-                'path': 'img/weapons/plasma.png',
+                'path': 'src/img/weapons/plasma.png',
                 'dmg': 1000,		# Base damage
                 'inc': 50,			# Damage increment per level
                 'ammo': 100,		# Ammunition
@@ -133,7 +135,7 @@ class Settings:
         self.baseSP = 250
         self.SHIP = {
             'Prometheus': {
-                'path': 'img/Prometheus.png',
+                'path': 'src/img/Prometheus.png',
                 'weapon': 'Laser',
                 'min_dist_sel': 40,
                 'lvl':     1,
@@ -146,7 +148,7 @@ class Settings:
         
         self.STRANGERS = {
             'Iken': {
-                'path':     'img/Iken (Epsilon).png',
+                'path':     'src/img/Iken (Epsilon).png',
                 'lvl':      1,
                 'creds':    2,
                 'exp':      10,
@@ -191,11 +193,12 @@ class Settings:
         self.xy_pixels_sqr = 50							# Type: True = fixed.     X and Y pixels in squares on background
         
         # Screen settings
+        if is_client:
+            self.screen_full_size = pygame.display.list_modes()[0]	# Resolution
         self.min_w = 600								# Minimum width resolution
         self.min_h = 400								# Minimum height resolution
         self.full_screen = False						# Full Screen
         self.RESOLUTION = RESOLUTION					# Resolution
-        self.screen_full_size = pygame.display.list_modes()[0]	# Resolution
         self.windowed_pos = []							# Current window pos and size (Windowed)
         self.init_time_windowed = 0
         self.antialiasing = True						# Anti-aliasing is a method by which you can remove irregularities that appear in objects in PC games.
@@ -240,6 +243,60 @@ class Settings:
         return limit_obj_dist
     
     # Functions ----------------------------------
+    
+    def getStranger(self, s_name, lvl):
+        
+        STRANGERS = {
+            'Iken': {
+                'type':     '',
+                'path':     'src/img/Iken ({}).png',
+                'lvl':      1,
+                'creds':    1,
+                'exp':      10,
+                'min_dist': 350,
+                'min_dist_sel': 40,
+                'wpn_name': 'Laser-mid',
+                'wpn_lvl':  0,
+                'speed':    50,
+                'spd_lvl':  0,
+                'lhp':      1,
+                'lsp':      1,
+                'hp':       self.baseHP,
+                'sp':       self.baseSP
+            }
+        }
+        
+        stgr_type = {
+            'Iken': {
+                1: 'Alfa',
+                2: 'Beta',
+                3: 'Gamma',
+                4: 'Delta',
+                5: 'Epsilon'
+            }
+        }
+        
+        if s_name == 'Iken':
+            if     0 <= lvl <  28: s_type = 5
+            elif  28 <= lvl <  56: s_type = 4
+            elif  56 <= lvl <  84: s_type = 3
+            elif  84 <= lvl < 112: s_type = 2
+            elif 112 <= lvl:       s_type = 1
+        
+        stranger = STRANGERS[s_name]
+        stranger['type']     = stgr_type[s_name][s_type]
+        stranger['lvl']      = lvl
+        stranger['path']     = stranger['path'].format(stranger['type'])
+        stranger['creds']   *= lvl
+        stranger['exp']     *= lvl
+        stranger['wpn_lvl']  = lvl-1
+        stranger['spd_lvl']  = lvl-1
+        stranger['lhp']      = lvl
+        stranger['lsp']      = lvl
+        # ~ stranger['lhp']     *= lvl//2 + lvl%2
+        # ~ stranger['lsp']     *= lvl//2
+        
+        return stranger
     
     def videoResize(self, event):
         if not self.RESOLUTION == event.size:
