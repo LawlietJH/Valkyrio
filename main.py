@@ -461,14 +461,12 @@ def detectEvents():
             if con: continue
 
 def movements(deltaTime):
-
         # Control de input del chat --------------
         if chat.chat_text_active: return
         #-----------------------------------------
 
         keys = pygame.key.get_pressed()
         speed = player.ship.speed
-        speed *= deltaTime
 
         movements = False
         degrees = 0
@@ -523,7 +521,6 @@ def movements(deltaTime):
                 y += speed
 
         if movements:
-
             # Control de seguimiento en el minimapa --------------------
             if player.follow_pos: player.cancelFollowPos()
             #-----------------------------------------------------------
@@ -531,8 +528,8 @@ def movements(deltaTime):
             player.ship.time_hp_init = 0
             player.angle = degrees
             player.rotate(degrees)
-            player.x += round(x)
-            player.y += round(y)
+            player.x += round(x * deltaTime)
+            player.y += round(y * deltaTime)
         else:
             # Recibir HP bajo sus reglas -------------------------------
             player.ship.healHP()
