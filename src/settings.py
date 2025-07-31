@@ -3,6 +3,7 @@ with contextlib.redirect_stdout(None):
     import pygame
 from pygame.locals import *
 import time
+import os
 
 
 class Settings:
@@ -41,28 +42,35 @@ class Settings:
             'Verde F':      (  0,100, 30),
         }
 
+        self.DIR = {
+            'Music':  'src/resources/sounds/music',
+            'SFX':    'src/resources/sounds/SFX',
+            'Fonts':  'src/resources/fonts',
+            'Images': 'src/resources/images'
+        }
+
         if is_client:
             self.FONT = {
-                'Inc-R 12': pygame.font.Font('src/font/Inconsolata-Regular.ttf', 12),
-                'Inc-R 13': pygame.font.Font('src/font/Inconsolata-Regular.ttf', 13),
-                'Inc-R 14': pygame.font.Font('src/font/Inconsolata-Regular.ttf', 14),
-                'Inc-R 15': pygame.font.Font('src/font/Inconsolata-Regular.ttf', 15),
-                'Inc-R 16': pygame.font.Font('src/font/Inconsolata-Regular.ttf', 16),
-                'Inc-R 18': pygame.font.Font('src/font/Inconsolata-Regular.ttf', 18),
-                'Inc-R 20': pygame.font.Font('src/font/Inconsolata-Regular.ttf', 20),
-                'Inc-R 24': pygame.font.Font('src/font/Inconsolata-Regular.ttf', 24),
-                'Retro 12': pygame.font.Font('src/font/Retro Gaming.ttf', 12),
-                'Retro 14': pygame.font.Font('src/font/Retro Gaming.ttf', 14),
-                'Retro 16': pygame.font.Font('src/font/Retro Gaming.ttf', 16),
-                'Retro 18': pygame.font.Font('src/font/Retro Gaming.ttf', 18),
-                'Retro 20': pygame.font.Font('src/font/Retro Gaming.ttf', 20),
-                'Retro 24': pygame.font.Font('src/font/Retro Gaming.ttf', 24),
-                'Wendy 12': pygame.font.Font('src/font/Wendy.ttf', 12),
-                'Wendy 14': pygame.font.Font('src/font/Wendy.ttf', 14),
-                'Wendy 16': pygame.font.Font('src/font/Wendy.ttf', 16),
-                'Wendy 18': pygame.font.Font('src/font/Wendy.ttf', 18),
-                'Wendy 20': pygame.font.Font('src/font/Wendy.ttf', 20),
-                'Wendy 24': pygame.font.Font('src/font/Wendy.ttf', 24),
+                'Inc-R 12': pygame.font.Font(f'{self.DIR["Fonts"]}/Inconsolata-Regular.ttf', 12),
+                'Inc-R 13': pygame.font.Font(f'{self.DIR["Fonts"]}/Inconsolata-Regular.ttf', 13),
+                'Inc-R 14': pygame.font.Font(f'{self.DIR["Fonts"]}/Inconsolata-Regular.ttf', 14),
+                'Inc-R 15': pygame.font.Font(f'{self.DIR["Fonts"]}/Inconsolata-Regular.ttf', 15),
+                'Inc-R 16': pygame.font.Font(f'{self.DIR["Fonts"]}/Inconsolata-Regular.ttf', 16),
+                'Inc-R 18': pygame.font.Font(f'{self.DIR["Fonts"]}/Inconsolata-Regular.ttf', 18),
+                'Inc-R 20': pygame.font.Font(f'{self.DIR["Fonts"]}/Inconsolata-Regular.ttf', 20),
+                'Inc-R 24': pygame.font.Font(f'{self.DIR["Fonts"]}/Inconsolata-Regular.ttf', 24),
+                'Retro 12': pygame.font.Font(f'{self.DIR["Fonts"]}/Retro Gaming.ttf', 12),
+                'Retro 14': pygame.font.Font(f'{self.DIR["Fonts"]}/Retro Gaming.ttf', 14),
+                'Retro 16': pygame.font.Font(f'{self.DIR["Fonts"]}/Retro Gaming.ttf', 16),
+                'Retro 18': pygame.font.Font(f'{self.DIR["Fonts"]}/Retro Gaming.ttf', 18),
+                'Retro 20': pygame.font.Font(f'{self.DIR["Fonts"]}/Retro Gaming.ttf', 20),
+                'Retro 24': pygame.font.Font(f'{self.DIR["Fonts"]}/Retro Gaming.ttf', 24),
+                'Wendy 12': pygame.font.Font(f'{self.DIR["Fonts"]}/Wendy.ttf', 12),
+                'Wendy 14': pygame.font.Font(f'{self.DIR["Fonts"]}/Wendy.ttf', 14),
+                'Wendy 16': pygame.font.Font(f'{self.DIR["Fonts"]}/Wendy.ttf', 16),
+                'Wendy 18': pygame.font.Font(f'{self.DIR["Fonts"]}/Wendy.ttf', 18),
+                'Wendy 20': pygame.font.Font(f'{self.DIR["Fonts"]}/Wendy.ttf', 20),
+                'Wendy 24': pygame.font.Font(f'{self.DIR["Fonts"]}/Wendy.ttf', 24),
                 'Comic 12': pygame.font.SysFont('comicsans', 12),
                 'Comic 14': pygame.font.SysFont('comicsans', 14),
                 'Comic 16': pygame.font.SysFont('comicsans', 16),
@@ -71,9 +79,7 @@ class Settings:
                 'Comic 24': pygame.font.SysFont('comicsans', 24)
             }   # Diccionario de Fuentes.
 
-            self.MUSIC = {
-                'JNATHYN - Genesis': 'src/sound/music/JNATHYN - Genesis.mp3'
-            }
+            self.MUSIC = self._get_music_files()
 
             # Sound Effects
             self.SFX = {}
@@ -100,7 +106,7 @@ class Settings:
 
         self.WEAPON = {
             'Laser-mid': {
-                'path': 'src/img/weapons/laser.png',
+                'path': f'{self.DIR["Images"]}/weapons/laser.png',
                 'dmg': 50,          # Base damage
                 'inc': 5,           # Damage increment per level
                 'ammo': 1000,       # Ammunition
@@ -109,7 +115,7 @@ class Settings:
                 'mult': 1           # Damage multiplier
             },
             'Laser': {
-                'path': 'src/img/weapons/laser.png',
+                'path': f'{self.DIR["Images"]}/weapons/laser.png',
                 'dmg': 100,         # Base damage
                 'inc': 10,          # Damage increment per level
                 'ammo': 1000,       # Ammunition
@@ -118,7 +124,7 @@ class Settings:
                 'mult': 1           # Damage multiplier
             },
             'Plasma': {
-                'path': 'src/img/weapons/plasma.png',
+                'path': f'{self.DIR["Images"]}/weapons/plasma.png',
                 'dmg': 1000,        # Base damage
                 'inc': 50,          # Damage increment per level
                 'ammo': 100,        # Ammunition
@@ -132,7 +138,7 @@ class Settings:
         self.baseSP = 250
         self.SHIP = {
             'Prometheus': {
-                'path': 'src/img/Prometheus.png',
+                'path': f'{self.DIR["Images"]}/Prometheus.png',
                 'weapon': 'Laser',
                 'min_dist_sel': 40,
                 'lvl':     1,
@@ -145,7 +151,7 @@ class Settings:
 
         self.STRANGERS = {
             'Iken': {
-                'path':     'src/img/Iken (Epsilon).png',
+                'path':     f'{self.DIR["Images"]}/Iken (Epsilon).png',
                 'lvl':      1,
                 'creds':    2,
                 'exp':      10,
@@ -239,13 +245,22 @@ class Settings:
                             )) + 100
         return limit_obj_dist
 
+    # Private Methods ----------------------------
+
+    def _get_music_files(self):
+        music_dir = self.DIR['Music']
+        files = os.listdir(music_dir)
+        music_files = filter(lambda file: file.endswith('.mp3'), files)
+        music_paths = map(lambda file: f'{self.DIR["Music"]}/{file}', music_files)
+        return list(music_paths)
+
     # Functions ----------------------------------
 
     def getStranger(self, s_name, lvl):
         STRANGERS = {
             'Iken': {
                 'type':     '',
-                'path':     'src/img/Iken ({}).png',
+                'path':     f'{self.DIR["Images"]}/Iken ({{}}).png',
                 'lvl':      1,
                 'creds':    1,
                 'exp':      10,
