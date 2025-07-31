@@ -2,13 +2,19 @@ import contextlib
 with contextlib.redirect_stdout(None):
     import pygame
 from pygame.locals import *
+from .repositories import Cache
+import binascii
 import math
 import time
+import bz2
 
 
 class Utils:
+    cache = Cache()
+
     def __init__(self):
         self.init_time = time.perf_counter()
+        self.bz2 = Bz2()
 
     def perSecond(self, t=1):
         if time.perf_counter() - self.init_time >= t:
@@ -174,3 +180,25 @@ class Utils:
     def curWinSize(self):
         info = pygame.display.Info()
         return [info.current_w, info.current_h]
+
+
+class Bz2:
+    cache = Cache('Bz2')
+
+    def hexlify(self, text):
+        return binascii.hexlify(text)
+
+    @cache.cache
+    def compress(self, text):
+        compress = bz2.compress(text)
+        return compress
+
+    @cache.cache
+    def decompress(self, text):
+        decompress = bz2.decompress(text).decode()
+        return decompress
+
+    @cache.cache
+    def compressHexlify(self, text):
+        compress = bz2.compress(text.encode())
+        return self.hexlify(compress)
