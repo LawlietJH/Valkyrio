@@ -9,15 +9,15 @@ import os
 
 #=======================================================================
 
-__project__ = 'Valkyrio'
-__author__  = 'LawlietJH'
-__version__ = '0.0.7 (Alfa)'
+__project__ = 'Zwem'
+__author__ = 'LawlietJH'
+__version__ = '0.0.8 (Alfa)'
 
 __license__ = 'MIT'
-__status__  = 'Development'
-__framework__    = 'Pygame'
-__description__  = 'Juego 2D online con pygame inspirado en los juegos clásicos de destruir naves.'
-__version_date__ = '06/09/2021'
+__status__ = 'Development'
+__framework__ = 'Pygame'
+__description__ = 'Juego 2D online con pygame inspirado en los juegos clásicos de destruir naves.'
+__version_date__ = '31/07/2025'
 
 #=======================================================================
 #=======================================================================
