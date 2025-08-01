@@ -181,8 +181,9 @@ class Ship:
 
 
 class Player:
-    def __init__(self, settings, name=None, id_=None):
+    def __init__(self, settings, utils, name=None, id_=None):
         self.settings = settings
+        self.utils = utils
 
         self.name = name
         self.ship = None
@@ -293,12 +294,6 @@ class Player:
         img = self.img_orig
         self.img = pygame.transform.rotate(img, angle)
 
-    def resize(self, image: pygame.Surface, scale: float = 1.0):
-        rect = image.get_rect()
-        wdth_hgt = (int(rect[2]*scale), int(rect[3]*scale))
-        image = pygame.transform.scale(image, wdth_hgt)
-        return image
-
     def antialiasing(self, img: pygame.Surface):
         """
         Anti-aliasing by average of color code in four pixels
@@ -370,7 +365,7 @@ class Player:
         self.ship.weapon = Weapon(self.settings, player['ship']['weapon']['name'])
         self.ship.weapon.levelUpDmg(player['ship']['weapon']['lvl'])
 
-        self.img_orig = self.loadImage(self.ship_path)
+        self.img_orig = self.utils.loadImage(self.ship_path)
         self.img = self.img_orig
         self.rotate(self.angle)
 
@@ -453,17 +448,6 @@ class Player:
         #     if not self.ship.weapon.lvl == player['ship']['weapon']['lvl']:
         #         lvl = self.ship.weapon.lvl - player['ship']['weapon']['lvl']
         #         self.ship.weapon.levelUpDmg(lvl)
-
-    # TODO: Eliminar color negro absoluto (0,0,0) en diseño de naves.
-    def loadImage(self, filename: str, transparent: bool = True):
-        try: image = pygame.image.load(filename)
-        except pygame.error as message: raise SystemError
-        image = image.convert()
-        # image = self.resize(image, 1.2)
-        if transparent:
-            color = image.get_at((0,0))
-            image.set_colorkey(color, RLEACCEL)
-        return image
 
     def followPos(self, speed: int, delta_time: float):
         if self.follow_pos:

@@ -36,7 +36,7 @@ game_time = None
 server = Network()
 utils = Utils()
 config = Settings(utils)
-player = Player(config)
+player = Player(config, utils)
 
 # General Objects
 minimap = Minimap(config, player)

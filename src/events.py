@@ -393,6 +393,6 @@ class Events:
             if not id_ in self.enemies:
                 from .entities.entities import Player
                 name = players[id_]['name']
-                other_player = Player(self.settings, name, id_)
+                other_player = Player(self.settings, self.utils, name, id_)
                 other_player.loadData(players)
                 self.enemies[id_] = other_player

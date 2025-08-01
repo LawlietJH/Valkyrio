@@ -166,6 +166,24 @@ class Utils:
         WIN.blit(mask_surf, (loc[0]-br, loc[1]+br))
         WIN.blit(mask_surf, (loc[0]+br, loc[1]-br))
 
+    def resizeImage(self, image: pygame.Surface, scale: float = 1.0):
+        if scale == 1.0: return image
+        rect = image.get_rect()
+        wdth_hgt = (int(rect[2]*scale), int(rect[3]*scale))
+        image = pygame.transform.scale(image, wdth_hgt)
+        return image
+
+    # TODO: Eliminar color negro absoluto (0,0,0) en diseño de naves.
+    def loadImage(self, filename: str, resize: float = 1.0, transparent: bool = True):
+        try: image = pygame.image.load(filename)
+        except pygame.error as message: raise SystemError
+        image = image.convert()
+        image = self.resizeImage(image, resize)
+        if transparent:
+            color = image.get_at((0,0))
+            image.set_colorkey(color, RLEACCEL)
+        return image
+
     @property
     def curWinRect(self):
         from ctypes import POINTER, WINFUNCTYPE, windll
