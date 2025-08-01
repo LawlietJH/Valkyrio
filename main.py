@@ -1,4 +1,5 @@
-from src import Network, Player, Settings, Utils, Chat, Minimap
+from src import (Network, Player, Settings,
+                 Utils, Chat, Minimap, Events)
 import contextlib
 with contextlib.redirect_stdout(None):
     import pygame
@@ -206,6 +207,11 @@ pygame.init()
 pygame.mixer.init()
 pygame.font.init()
 
+# Dynamic Variables
+enemies = {}
+game_time = None
+WIN = None
+
 # Basic Objects
 server = Network()
 utils = Utils()
@@ -215,329 +221,12 @@ player = Player(config)
 # General Objects
 minimap = Minimap(config, player)
 chat = Chat(config)
+events = Events(config, server, player, enemies, minimap, chat, utils)
 menu = Menu()
 
-# Dynamic Variables
-enemies = {}
-game_time = None
-WIN = None
-
 #=======================================================================
 #=======================================================================
 #=======================================================================
-
-# Events -----------------------------------------
-
-def keysDown(event):
-
-    if event.key == pygame.K_ESCAPE:                        # ESC - Close Game
-        config.run = False
-
-    if event.key == pygame.K_LSHIFT:                        # LShift- Attack
-        if player.selected['id'] >= 0:
-            player.attacking = not player.attacking
-
-    # Hide/Show ---------------
-    if event.key == pygame.K_TAB:
-
-        # Control de menu ------------------------
-        config.open_menu = not config.open_menu
-
-        # Control de input del chat ------------------------
-        if chat.chat_text_active:
-            chat.chat_text_active = False
-
-    if not config.open_menu:
-        if event.key == pygame.K_o:                                 # O - Hide/Show Names
-            config.show['name'] = not config.show['name']
-        if event.key == pygame.K_p:                                 # P - Hide/Show HP-SP
-            config.show['hp-sp'] = not config.show['hp-sp']
-
-    #--------------------------
-
-    if event.key == pygame.K_F11:                                   # F11 - Fullscreen
-        config.switchFullScreen()
-
-    #--------------------------
-
-    if event.key == pygame.K_1:
-        if config.open_menu:
-            config.pos_tab_menu = 1
-    if event.key == pygame.K_2:
-        if config.open_menu:
-            config.pos_tab_menu = 2
-    if event.key == pygame.K_3:
-        if config.open_menu:
-            config.pos_tab_menu = 3
-    if event.key == pygame.K_4:
-        if config.open_menu:
-            config.pos_tab_menu = 4
-    if event.key == pygame.K_5:
-        if config.open_menu:
-            config.pos_tab_menu = 5
-    if event.key == pygame.K_6:
-        if config.open_menu:
-            config.pos_tab_menu = 6
-    if event.key == pygame.K_7:
-        if config.open_menu:
-            config.pos_tab_menu = 7
-    if event.key == pygame.K_8:
-        if config.open_menu:
-            config.pos_tab_menu = 8
-    if event.key == pygame.K_9:
-        if config.open_menu:
-            config.pos_tab_menu = 9
-    if event.key == pygame.K_0:
-        if config.open_menu:
-            config.pos_tab_menu = 0
-
-    #--------------------------
-
-    if event.key == pygame.K_BACKSPACE:
-        # Control de input del chat ------------------------
-        if chat.chat_text_active and chat.chat_text:
-            chat.chat_text = chat.chat_text[:-1]
-
-    if event.key == pygame.K_RETURN:
-        # Control de input del chat ------------------------
-        if chat.chat_text_active and chat.chat_text:
-
-            if chat.chat_tab == 1: chat_type = 'global'
-
-            msg = 'msg:'+chat_type+':'+player.name+':'+chat.chat_text
-            chat.messages = server.send(msg)
-            chat.chat_text = ''
-
-    if event.key == pygame.K_PLUS:                             # +
-        if chat.chat_w < chat.chat_max_w:
-            chat.chat_w += 5
-        print(chat.chat_w)
-    if event.key == pygame.K_MINUS:                            # -
-        if chat.chat_w > chat.chat_min_w:
-            chat.chat_w -= 5
-        print(chat.chat_w)
-
-    if event.key == pygame.K_t:                                # t
-        if chat.chat_h < chat.chat_max_h:
-            chat.chat_h += 5
-        print(chat.chat_h)
-    if event.key == pygame.K_y:                                # y
-        if chat.chat_h > chat.chat_min_h:
-            chat.chat_h -= 5
-        print(chat.chat_h)
-
-    #--------------------------
-    if event.key == pygame.K_j:                                # J - Speed level down
-        # if player.ship.spd_lvl > 0:
-        #     cost = player.ship.spd_lvl*10
-        #     player.creds += cost
-            player.ship.speedLevelDown(-10)
-    if event.key == pygame.K_k:                                # K - Speed level up
-        # ~ cost = (player.ship.spd_lvl+1)
-        # ~ if player.creds >= cost:
-            # ~ player.creds -= cost
-            player.ship.speedLevelUp(10)
-
-    if event.key == pygame.K_u:                                # U - HP level up
-        # cost = (player.ship.lhp+1) * 10
-        # if player.creds >= cost:
-        #     player.creds -= cost
-            player.ship.levelUpHP(10)
-    if event.key == pygame.K_i:                                # I - SP level up
-        # cost = (player.ship.lsp+1) * 10
-        # if player.creds >= cost:
-        #     player.creds -= cost
-            if not player.ship.shield_unlocked:
-                player.ship.shield_unlocked = True
-            player.ship.levelUpSP(10)
-
-    if event.key == pygame.K_h:                                # H - Dmg level up
-        # cost = (player.ship.weapon.lvl+1)
-        # if player.creds >= cost:
-        #     player.creds -= cost
-            player.ship.weapon.levelUpDmg(50)
-
-    if event.key == pygame.K_l:                                # L - receive 100 Dmg
-        player.ship.recvDamage(100, pct_sp=1, mult=1)
-
-def detectEvents():
-
-    con = True
-
-    for event in pygame.event.get():
-
-        if event.type == pygame.TEXTINPUT:
-            # Control de input del chat --------------------
-            if chat.chat_text_active:
-                chat.chat_text += event.text
-
-        if event.type == pygame.QUIT:
-            config.run = False
-
-            #-----------------------------------------------------------
-            if con: continue
-
-        if event.type == VIDEORESIZE:
-
-            temp_res = config.RESOLUTION
-
-            # Cambio de resolución -------------------------------------
-            config.videoResize(event)
-
-            # Control del movimimiento del minimapa --------------------
-            minimap.onResizeScreen(temp_res)
-
-            #-------------------------------------
-            if con: continue
-
-        if event.type == pygame.KEYDOWN:
-
-            keysDown(event)
-
-            #-------------------------------------
-            if con: continue
-
-        if event.type == pygame.MOUSEMOTION:
-
-            # Control del movimimiento del minimapa --------------------
-            minimap.mouseMotion(event)
-
-            # Control del movimimiento del chat ------------------------
-            chat.mouseMotion(event)
-
-            #-------------------------------------
-            if con: continue
-
-        if event.type == pygame.MOUSEBUTTONDOWN:
-
-            if not config.open_menu:
-
-                # Control de seleccion del enemigo ---------------------
-                if not chat.chat_text_active:
-                    players = selectEnemy(event)
-                    if players: updateOtherPlayers(players)
-
-                # Control del movimimiento del minimapa ----------------
-                minimap.mouseButtonDown(event)
-
-                # Control del movimimiento del chat --------------------
-                chat.mouseButtonDown(event)
-
-                # Control del tamaño del minimapa ----------------------
-                minimap.resize(event)
-
-                # Control de seguimiento en el minimapa ----------------
-                if not minimap.map_resize:
-                    minimap.setFollowPos(event)
-
-                # Control de input del chat ----------------------------
-                chat.activeInput(event)
-
-                #-------------------------------------------------------
-                if minimap.map_resize: minimap.map_resize = False
-
-            #-------------------------------------
-            if con: continue
-
-        if event.type == pygame.MOUSEBUTTONUP:
-
-            # Control del movimimiento del minimapa --------------------
-            minimap.mouseButtonUp()
-
-            # Control del movimimiento del chat ------------------------
-            chat.mouseButtonUp()
-
-            #-------------------------------------
-            if con: continue
-
-        if event.type == pygame.WINDOWLEAVE:
-
-            # Control del movimimiento del minimapa --------------------
-            minimap.windowLeave()
-
-            #-------------------------------------
-            if con: continue
-
-def movements(delta_time):
-        # Control de input del chat --------------
-        if chat.chat_text_active: return
-        #-----------------------------------------
-
-        keys = pygame.key.get_pressed()
-        speed = player.ship.speed
-
-        movements = False
-        degrees = 0
-        x = 0
-        y = 0
-
-        leftMove  = keys[pygame.K_LEFT]  or keys[pygame.K_a]
-        rightMove = keys[pygame.K_RIGHT] or keys[pygame.K_d]
-        upMove    = keys[pygame.K_UP]    or keys[pygame.K_w]
-        downMove  = keys[pygame.K_DOWN]  or keys[pygame.K_s]
-        leftRightMove = leftMove and rightMove
-        upDownMove    = upMove and downMove
-
-        if leftMove and not rightMove:
-            movements = True
-            if not upDownMove and (upMove or downMove):
-                if   upMove:   degrees = 90
-                elif downMove: degrees = 270
-                x -= utils.diagonal(speed)['x']
-            else:
-                degrees = 180
-                x -= speed
-
-        if rightMove and not leftMove:
-            movements = True
-            if not upDownMove and (upMove or downMove):
-                if   upMove:   degrees = 90
-                elif downMove: degrees = 270
-                x += utils.diagonal(speed)['x']
-            else:
-                degrees = 0
-                x += speed
-
-        if upMove and not downMove:
-            movements = True
-            if not leftRightMove and (leftMove or rightMove):
-                if leftMove:  degrees += 45
-                if rightMove: degrees -= 45
-                y -= utils.diagonal(speed)['y']
-            else:
-                degrees = 90
-                y -= speed
-
-        if downMove and not upMove:
-            movements = True
-            if not leftRightMove and (leftMove or rightMove):
-                if leftMove:  degrees -= 45
-                if rightMove: degrees += 45
-                y += utils.diagonal(speed)['y']
-            else:
-                degrees = 270
-                y += speed
-
-        if movements:
-            # Control de seguimiento en el minimapa --------------------
-            if player.follow_pos: player.cancelFollowPos()
-            #-----------------------------------------------------------
-
-            player.ship.time_hp_init = 0
-            player.angle = degrees
-            player.rotate(degrees)
-            player.x += round(x * delta_time, 2)
-            player.y += round(y * delta_time, 2)
-        else:
-            # Recibir HP bajo sus reglas -------------------------------
-            player.ship.healHP()
-
-            # Control de seguimiento en el minimapa --------------------
-            player.followPos(speed)
-            #-----------------------------------------------------------
-
-        # Recibir SP bajo sus reglas:
-        player.ship.healSP()
 
 # Rules ------------------------------------------
 
@@ -557,7 +246,6 @@ def radioactiveZone():
 # Actions ----------------------------------------
 
 def setAttack():
-
     # Draw Laser and damage on enemies:
     if player.selected['id'] >= 0 and player.attacking:
 
@@ -592,14 +280,13 @@ def setAttack():
                 player.attacking = False
 
 def lookAtEnemy():
-
     # Gira hacia el enemigo
     if player.selected['id'] >= 0 and player.attacking:
 
         desX = (int(config.CENTER['x'])-int(player.x))    # Desplazamiento en X
         desY = (int(config.CENTER['y'])-int(player.y))    # Desplazamiento en Y
 
-        player.ship.time_hp_init = 0                                    # Reinicia el contador para regenracion de HP
+        player.ship.time_hp_init = 0                      # Reinicia el contador para regenracion de HP
 
         p_id = player.selected['id']
 
@@ -619,69 +306,6 @@ def lookAtEnemy():
         player.selected['dist'] = dist
         player.angle = angle
         player.rotate(angle)
-
-def selectEnemy(event):
-
-    if event.button == 1:
-
-        desX = (int(config.CENTER['x'])-int(player.x))    # Desplazamiento en X
-        desY = (int(config.CENTER['y'])-int(player.y))    # Desplazamiento en Y
-
-        posX, posY = event.pos
-        dists = []
-        for other_player_id in enemies:
-
-            if other_player_id == player.id: continue
-
-            other_player = enemies[other_player_id]
-            if other_player.ship.chp == 0: continue
-
-            pposX = other_player.x+desX
-            pposY = other_player.y+desY
-
-            dist = utils.euclideanDistance((posX, posY), (pposX,pposY))
-
-            if dist < other_player.ship.base['min_dist_sel']:
-                dists.append(( dist, other_player.name, other_player_id ))
-
-        min_dist      = other_player.ship.base['min_dist_sel']
-        min_dist_name = ''
-        min_dist_id   = 0
-
-        data_f = 'selected:{{"name":"{}","id":{}}}'
-        data = ''
-
-        if len(dists) > 1:
-            for dist, name, p_id in dists:
-                if dist < min_dist:
-                    min_dist      = dist
-                    min_dist_name = name
-                    min_dist_id   = p_id
-            if not min_dist_id == player.selected['id']:
-                player.attacking = False
-                player.selected['name'] = min_dist_name
-                player.selected['id']   = min_dist_id
-                data = data_f.format(min_dist_name, min_dist_id)
-        elif dists:
-            if not dists[0][2] == player.selected['id']:
-                player.attacking = False
-                player.selected['name'] = dists[0][1]
-                player.selected['id']   = dists[0][2]
-                data = data_f.format(dists[0][1], dists[0][2])
-
-        if data:
-            players = server.send(data)
-            return players
-
-    if event.button == 3:
-        player.attacking = False
-        if player.selected['id'] >= 0:
-            player.selected['name'] = ''
-            player.selected['id']   = -1
-            player.selected['dist'] = -1
-            data = 'selected:{"name":"","id":-1}'
-            players = server.send(data)
-            return players
 
 def calcFrames():
     if utils.perSecond():
@@ -703,31 +327,6 @@ def getUsername() -> str:
             msg += ' characters [inclusive])'
             print(msg)
     return name
-
-# Update Data ------------------------------------
-
-def updateOtherPlayers(players):
-
-    # Update enemies
-    ids_removed = []
-    for id_ in enemies:
-        if enemies[id_].__class__.__name__ == 'Player':
-            if id_ in players:
-                enemies[id_].updateData(players)
-            else:
-                ids_removed.append(id_)
-
-    # Remove expired IDs
-    for id_ in ids_removed: del enemies[id_]
-
-    # Add new enemies
-    for id_ in players:
-        if id_ == player.id: continue
-        if not id_ in enemies:
-            name = players[id_]['name']
-            other_player = Player(config, name, id_)
-            other_player.loadData(players)
-            enemies[id_] = other_player
 
 # Global Chat ------------------------------------
 
@@ -849,7 +448,6 @@ def renderText(text, font, color, _type=''):
     return font.render(text, config.antialiasing, color)
 
 def drawMinimap(map_enemies_pos):
-
     x, y = minimap.player_pos
 
     # Draw player screen on minimap
@@ -895,7 +493,6 @@ def drawMinimap(map_enemies_pos):
         pygame.draw.circle(WIN, config.COLOR['Rojo'], (x,y), 1, 1)
 
 def drawShipAndData(ship, des, name_color):
-
     # Draw red circle ----------------------------
     if player.selected['id'] == ship.id:    # Circulo de selección
         pygame.draw.circle(WIN,
@@ -1018,9 +615,7 @@ def drawShipAndData(ship, des, name_color):
     #===================================================================
     # Draw taken damage --------------------------
     if ship.ship.damageRecv:
-
         if config.show['acc_dmg']:
-
             len_dmg = len(ship.ship.damageRecv)
             for i in range(len_dmg):
                 if ship.ship.damageRecv[i]:
@@ -1270,7 +865,6 @@ def redrawWindow():
 #=======================================================================
 
 def createWindow():
-
     global WIN
 
     # Make window start in top left hand corner
@@ -1333,7 +927,7 @@ def main():
         #---------------------------------------------------------------
 
         # Update Data:
-        updateOtherPlayers(players)                             # Actualiza los datos de los enemigos
+        events.updateOtherPlayers(players)             # Actualiza los datos de los enemigos
 
         # Actions:
         lookAtEnemy()                                           # Si el enemigo esta seleccionado o el jugador es seleccionado, las naves giran apuntandose.
@@ -1347,9 +941,9 @@ def main():
 
         # Events:
         if not delta_time > last_delta_time*10:
-            movements(delta_time)                               # Detecta los movimientos direccionales
+            events.movements(delta_time)                        # Detecta los movimientos direccionales
         last_delta_time = delta_time
-        detectEvents()                                          # Detecta los eventos de Mouse y Teclado
+        events.detectEvents()                                   # Detecta los eventos de Mouse y Teclado
 
         # Update Window Data
         pygame.display.update()                                 # Actualiza la ventana con todos los cambios
