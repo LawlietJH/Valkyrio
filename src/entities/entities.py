@@ -465,7 +465,7 @@ class Player:
             image.set_colorkey(color, RLEACCEL)
         return image
 
-    def followPos(self, speed: int):
+    def followPos(self, speed: int, delta_time: float):
         if self.follow_pos:
             x = int(self.x)
             y = int(self.y)
@@ -486,30 +486,36 @@ class Player:
                     self.rotate(self.angle)
             else:
                 mov_speed = self.settings.utils.diagonal(speed, self.angle)
+                self.rotate(self.angle)
 
             dist_px = int(self.settings.utils.euclideanDistance((x,y),(gpx,gpy)))
 
+            speed_x = speed_y = 0
+
             if dist_px > 5:
                 if x > gpx and y < gpy:
-                    self.x -= mov_speed['x']
-                    self.y += mov_speed['y']
+                    speed_x -= mov_speed['x']
+                    speed_y += mov_speed['y']
                 elif x < gpx and y < gpy:
-                    self.x += mov_speed['x']
-                    self.y += mov_speed['y']
+                    speed_x += mov_speed['x']
+                    speed_y += mov_speed['y']
                 elif x < gpx and y > gpy:
-                    self.x += mov_speed['x']
-                    self.y -= mov_speed['y']
+                    speed_x += mov_speed['x']
+                    speed_y -= mov_speed['y']
                 elif x > gpx and y > gpy:
-                    self.x -= mov_speed['x']
-                    self.y -= mov_speed['y']
+                    speed_x -= mov_speed['x']
+                    speed_y -= mov_speed['y']
                 elif x > gpx and y == gpy:
-                    self.x -= speed
+                    speed_x -= speed
                 elif x < gpx and y == gpy:
-                    self.x += speed
+                    speed_x += speed
                 elif y > gpy and x == gpx:
-                    self.y -= speed
+                    speed_y -= speed
                 elif y < gpy and x == gpx:
-                    self.y += speed
+                    speed_y += speed
+
+                self.x += round(speed_x * delta_time, 2)
+                self.y += round(speed_y * delta_time, 2)
             else:
                 self.cancelFollowPos()
 

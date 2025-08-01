@@ -307,7 +307,7 @@ class Events:
                 self.player.ship.healHP()
 
                 # Control de seguimiento en el minimapa --------------------
-                self.player.followPos(speed)
+                self.player.followPos(speed, delta_time)
                 #-----------------------------------------------------------
 
             # Recibir SP bajo sus reglas:

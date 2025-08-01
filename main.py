@@ -575,7 +575,6 @@ def drawConfigData():
         window.WIN.blit(text, (despX, config.H-text.get_height()-10 -(despY*i)))
 
 def redrawWindow():
-
     BLANCO = config.COLOR['Blanco']
     ROJO   = config.COLOR['Rojo']
     window.WIN.fill(config.COLOR['Background'])

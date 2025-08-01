@@ -31,7 +31,7 @@ class Minimap:
         self.map_size_y = 20
         self.set_size(mult=self.map_size)
 
-    def setFollowPos(self, event):
+    def setFollowPos(self, event): # TODO: Revisar por qué cuando se destruye un enemigo y esta siguiendo una posición, se devia u no cambia su angulo.
         x, y = event.pos
 
         # Distancia en coordenadas falsas (las coordenadas falsas son las mostradas al usuario en gameplay)
@@ -107,13 +107,13 @@ class Minimap:
         if self.map_y-self.map_name_rect[1]-5 < 0:
             self.map_y = self.map_name_rect[1]+5
 
-    def quadrant(self, w, h):
+    def quadrant(self, w: int, h: int):
         if   self.map_x > w//2 and self.map_y < h//2: self.quad = 1            # Right Upper Quadrant
         elif self.map_x < w//2 and self.map_y < h//2: self.quad = 2            # Left  Upper Quadrant
         elif self.map_x < w//2 and self.map_y > h//2: self.quad = 3            # Left  Lower Quadrant
         elif self.map_x > w//2 and self.map_y > h//2: self.quad = 4            # Right Lower Quadrant
 
-    def onResizeScreen(self, orig_res):
+    def onResizeScreen(self, orig_res: tuple):
         w, h = orig_res
 
         self.quadrant(w, h)
