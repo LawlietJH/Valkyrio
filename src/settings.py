@@ -106,7 +106,7 @@ class Settings:
 
         self.WEAPON = {
             'Laser-mid': {
-                'path': f'{self.DIR["Images"]}/weapons/laser-red-mid.png',
+                'path': f'{self.DIR["Images"]}/weapons/laser-red.png',
                 'dmg': 50,          # Base damage
                 'inc': 5,           # Damage increment per level
                 'ammo': 1000,       # Ammunition
@@ -141,9 +141,9 @@ class Settings:
                 'path': f'{self.DIR["Images"]}/Prometheus.png',
                 'weapon': 'Laser',
                 'min_dist_sel': 40,
-                'lvl':     1,
+                'level':     1,
                 'speed':   100,
-                'spd_lvl': 0,
+                'spd_level': 0,
                 'hp':      self.baseHP,
                 'sp':      self.baseSP
             }
@@ -152,15 +152,15 @@ class Settings:
         self.STRANGERS = {
             'Iken': {
                 'path':     f'{self.DIR["Images"]}/Iken (Epsilon).png',
-                'lvl':      1,
+                'level':      1,
                 'creds':    2,
                 'exp':      10,
                 'min_dist': 350,
                 'min_dist_sel': 40,
                 'wpn_name': 'Laser-mid',
-                'wpn_lvl':  0,
+                'wpn_level':  0,
                 'speed':    50,
-                'spd_lvl':  0,
+                'spd_level':  0,
                 'lhp':      1,
                 'lsp':      1,
                 'hp':       50,
@@ -258,20 +258,20 @@ class Settings:
 
     # Functions ----------------------------------
 
-    def getStranger(self, s_name, lvl):
+    def getStranger(self, s_name, level):
         STRANGERS = {
             'Iken': {
                 'type':     '',
                 'path':     f'{self.DIR["Images"]}/Iken ({{}}).png',
-                'lvl':      1,
+                'level':      1,
                 'creds':    1,
                 'exp':      10,
                 'min_dist': 350,
                 'min_dist_sel': 40,
                 'wpn_name': 'Laser-mid',
-                'wpn_lvl':  0,
+                'wpn_level':  0,
                 'speed':    50,
-                'spd_lvl':  0,
+                'spd_level':  0,
                 'lhp':      1,
                 'lsp':      1,
                 'hp':       self.baseHP,
@@ -290,24 +290,24 @@ class Settings:
         }
 
         if s_name == 'Iken':
-            if     0 <= lvl <  28: s_type = 5
-            elif  28 <= lvl <  56: s_type = 4
-            elif  56 <= lvl <  84: s_type = 3
-            elif  84 <= lvl < 112: s_type = 2
-            elif 112 <= lvl:       s_type = 1
+            if     0 <= level <  28: s_type = 5
+            elif  28 <= level <  56: s_type = 4
+            elif  56 <= level <  84: s_type = 3
+            elif  84 <= level < 112: s_type = 2
+            elif 112 <= level:       s_type = 1
 
         stranger = STRANGERS[s_name]
-        stranger['type']     = stgr_type[s_name][s_type]
-        stranger['lvl']      = lvl
-        stranger['path']     = stranger['path'].format(stranger['type'])
-        stranger['creds']   *= lvl
-        stranger['exp']     *= lvl
-        stranger['wpn_lvl']  = lvl-1
-        stranger['spd_lvl']  = lvl-1
-        stranger['lhp']      = lvl
-        stranger['lsp']      = lvl
-        # stranger['lhp']     *= lvl//2 + lvl%2
-        # stranger['lsp']     *= lvl//2
+        stranger['type']      = stgr_type[s_name][s_type]
+        stranger['level']     = level
+        stranger['path']      = stranger['path'].format(stranger['type'])
+        stranger['creds']    *= level
+        stranger['exp']      *= level
+        stranger['wpn_level'] = level-1
+        stranger['spd_level'] = level-1
+        stranger['lhp']       = level
+        stranger['lsp']       = level
+        # stranger['lhp']      *= level//2 + level%2
+        # stranger['lsp']      *= level//2
 
         return stranger
 

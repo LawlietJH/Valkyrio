@@ -37,10 +37,10 @@ chat = Chat()
 # FUNCTIONS ============================================================
 # ======================================================================
 
-def threaded_bot(stranger_id: int, stranger_name: str, lvl_min: int = 1, lvl_max: int = 10):
+def threaded_bot(stranger_id: int, stranger_name: str, level_min: int = 1, level_max: int = 10):
     global connections, players, game_time, _id #, current_levels
 
-    if lvl_min < 1: lvl_min = 1
+    if level_min < 1: level_min = 1
 
     # while True:
     #     r = random.randrange(1,224)
@@ -57,7 +57,7 @@ def threaded_bot(stranger_id: int, stranger_name: str, lvl_min: int = 1, lvl_max
     while True:
         # stranger_info = config.STRANGERS[stranger_name]
 
-        r = random.randrange(lvl_min, lvl_max+1)
+        r = random.randrange(level_min, level_max+1)
         stranger_info = config.getStranger(stranger_name, r)
 
         map_limits = config.MAP[config.map_name]
@@ -74,17 +74,17 @@ def threaded_bot(stranger_id: int, stranger_name: str, lvl_min: int = 1, lvl_max
             'ship': {
                 'name':    stranger_name,                                # Ship Name
                 'path':    stranger_info['path'],                        # Path of ship design
-                'lvl':     stranger_info['lvl'],                        # Stranger level
+                'level':     stranger_info['level'],                        # Stranger level
                 'lhp':     stranger_info['lhp'],                        # Health Points
                 'lsp':     stranger_info['lsp'],                        # Shield Points
                 'chp':     stranger_info['lhp']*stranger_info['hp'],    # Current Health Points
                 'csp':     stranger_info['lsp']*stranger_info['sp'],    # Current Shield Points
                 's_unlkd': True,                                        # Shield Unlocked
                 'dtry':    False,                                        # Destroyed
-                'spd_lvl': stranger_info['spd_lvl'],                    # Speed level
+                'spd_level': stranger_info['spd_level'],                    # Speed level
                 'weapon': {
                     'name': stranger_info['wpn_name'],                    # Weapon name
-                    'lvl':  stranger_info['wpn_lvl']                    # Weapon level
+                    'level':  stranger_info['wpn_level']                    # Weapon level
                 }
             },
             'selected': {
@@ -97,7 +97,7 @@ def threaded_bot(stranger_id: int, stranger_name: str, lvl_min: int = 1, lvl_max
         stranger = Stranger(config, players[stranger_id], stranger_id)
         stranger.loadData(players)
 
-        print(f"[LOG] {stranger_name} ({stranger.ship.lvl}) Generated. ID: {stranger_id} ({int(stranger.x/config.posdiv)},{int(stranger.y/config.posdiv)})")
+        print(f"[LOG] {stranger_name} ({stranger.ship.level}) Generated. ID: {stranger_id} ({int(stranger.x/config.posdiv)},{int(stranger.y/config.posdiv)})")
 
         deltaTime = 1
 
@@ -162,7 +162,7 @@ def threaded_client(conn, _id):
         'ang':   0,                        # Angle
         'atk':   False,                    # Attacking
         'ship': {
-            'lvl':     0,
+            'level':     0,
             'name':    'Prometheus',    # Ship Name
             'lhp':     20,                # Health Points
             'lsp':     20,                # Shield Points
@@ -170,10 +170,10 @@ def threaded_client(conn, _id):
             'csp':     0,                # Current Shield Points
             's_unlkd': True,            # Shield Unlocked
             'dtry':    False,            # Destroyed
-            'spd_lvl': 0,                # Speed
+            'spd_level': 0,                # Speed
             'weapon': {
                 'name': 'Laser',        # Weapon name
-                'lvl': 0                # Weapon level
+                'level': 0                # Weapon level
             }
         },
         'selected': {
@@ -220,9 +220,9 @@ def threaded_client(conn, _id):
                 if not player_s['csp']     == data_s['csp']:                 player_s['csp']     = data_s['csp']
                 if not player_s['s_unlkd'] == (data_s['s_unlkd'] == 'True'): player_s['s_unlkd'] = data_s['s_unlkd'] == 'True'
                 if not player_s['dtry']    == (data_s['dtry'] == 'True'):    player_s['dtry']    = data_s['dtry'] == 'True'
-                if not player_s['spd_lvl'] == data_s['spd_lvl']:             player_s['spd_lvl'] = data_s['spd_lvl']
+                if not player_s['spd_level'] == data_s['spd_level']:             player_s['spd_level'] = data_s['spd_level']
                 if not player_sw['name']   == data_sw['name']:               player_sw['name']   = data_sw['name']
-                if not player_sw['lvl']    == data_sw['lvl']:                player_sw['lvl']    = data_sw['lvl']
+                if not player_sw['level']    == data_sw['level']:                player_sw['level']    = data_sw['level']
 
                 if data['dmginfo']['dmg'] > 0 and data['dmginfo']['id'] >= 0:
 

@@ -13,23 +13,27 @@ class Weapon:
     def __init__(self, settings, name) -> None:
         self.name = name
         self.path = settings.WEAPON[name]
-        self.dmg  = settings.WEAPON[name]['dmg']
-        self.inc  = settings.WEAPON[name]['inc']
+        self.dmg = settings.WEAPON[name]['dmg']
+        self.inc = settings.WEAPON[name]['inc']
         self.dist = settings.WEAPON[name]['dist']
         self.pct_sp = settings.WEAPON[name]['pct_sp']
         self.mult = settings.WEAPON[name]['mult']
-        self.lvl  = 0
+        self.level = 0
         self.init_time = 0
+        self.MAX_LEVEL = 120
 
-    def levelUpDmg(self, lvl: int = 1) -> None:
-        self.lvl += lvl
-        self.dmg += lvl*self.inc
+    def levelUpDmg(self, level: int = 1) -> None:
+        self.level += level
+        self.dmg += level*self.inc
 
     def perSecond(self, t: int = 1) -> bool:
         if time.perf_counter() - self.init_time >= t:
             self.init_time = time.perf_counter()
             return True
         return False
+
+    def cost_multiplier(self):
+        return round(math.sqrt(100*self.level+100)-10, 2)
 
 
 class Ship:
@@ -44,8 +48,8 @@ class Ship:
             self.base = self.settings.STRANGERS[name]
             self.weapon = Weapon(self.settings, self.base['wpn_name'])
         self.destroyed = False
-        self.spd_lvl = self.base['spd_lvl']
-        self.lvl = self.base['lvl']
+        self.spd_level = self.base['spd_level']
+        self.level = self.base['level']
 
         # Health
         self.hp  = 0                    # Health points
@@ -74,47 +78,48 @@ class Ship:
     @property
     def speed(self):
         # Aumento de velocidad en forma exponencial y=sqrt(200x+100) tomando en cuenta que
-        # el nivel x=112 y=150, todo basado en: y=sqrt(max_lvl*current_lvl)
+        # el nivel x=112 y=150, todo basado en: y=sqrt(max_level*current_level)
         init = 10
         speed = self.base['speed']                                      # Velocidad base de la nave
-        val = math.sqrt(200*(self.spd_lvl+1)-100)-init                  # Aumento de velocidad en forma de parabola, basado en: y = sqrt(200x+100)
-        add = init * (self.spd_lvl/(self.settings.MAX_SPD_LVL))
-        speed += val+add
+        #val = math.sqrt(200*(self.spd_level+1)-100)-init                 # Aumento de velocidad en forma de parabola, basado en: y = sqrt(200x+100)
+        val = 1.25*self.spd_level + (math.sqrt(100*self.spd_level)*.25)     # Generador de niveles en: y = 1.25x + sqrt(100x)*0.25 donde x=100 -> y=150
+        add = init * (self.spd_level/(self.settings.MAX_SPD_LVL))
+        speed += add + val
         return int(speed)
 
     def getPctResDmgRad(self):              # Control del nivel de radiacion
-        if self.lvl >= 28:
-            if self.lvl//100 > 1:
+        if self.level >= 28:
+            if self.level//100 > 1:
                 return 1
             else:
-                return self.lvl//100
+                return self.level//100
         else:
             return 1
 
-    def speedLevelUp(self, lvl: int = 1):
-        if self.spd_lvl+lvl <= self.settings.MAX_SPD_LVL:
-            self.spd_lvl += lvl
+    def speedLevelUp(self, level: int = 1):
+        if self.spd_level+level <= self.settings.MAX_SPD_LVL:
+            self.spd_level += level
         else:
-            self.spd_lvl = self.settings.MAX_SPD_LVL
+            self.spd_level = self.settings.MAX_SPD_LVL
 
-    def speedLevelDown(self, lvl: int = -1):
-        if self.spd_lvl+lvl >= 0:
-            self.spd_lvl += lvl
+    def speedLevelDown(self, level: int = -1):
+        if self.spd_level+level >= 0:
+            self.spd_level += level
         else:
-            self.spd_lvl = 0
+            self.spd_level = 0
 
-    def levelUpHP(self, lvl: int = 1):             # Incrementa de nivel el HP
-        inc = self.base['hp'] * lvl
+    def levelUpHP(self, level: int = 1):             # Incrementa de nivel el HP
+        inc = self.base['hp'] * level
         self.hp += inc
         self.chp += inc
-        self.lhp += lvl
+        self.lhp += level
 
-    def levelUpSP(self, lvl: int = 1):             # Incrementa de nivel el SP
+    def levelUpSP(self, level: int = 1):             # Incrementa de nivel el SP
         if self.shield_unlocked:
-            inc = self.base['sp'] * lvl
+            inc = self.base['sp'] * level
             self.sp += inc
             self.csp += inc
-            self.lsp += lvl
+            self.lsp += level
 
     # Registra el daño recibido para mostrarlo
     def recvDamage(self, damage: int, pct_sp: int = None, mult: float = 1.0, draw: bool = True):
@@ -244,10 +249,10 @@ class Player:
         data_f +=     '"csp":{},'
         data_f +=     '"s_unlkd":"{}",'
         data_f +=     '"dtry":"{}",'
-        data_f +=     '"spd_lvl":{},'
+        data_f +=     '"spd_level":{},'
         data_f +=     '"weapon":{{'
         data_f +=       '"name":"{}",'
-        data_f +=       '"lvl":{}'
+        data_f +=       '"level":{}'
         data_f +=     '}}'
         data_f +=   '}},'
         data_f +=   '"dmginfo":{{'
@@ -273,9 +278,9 @@ class Player:
             self.ship.csp,
             self.ship.shield_unlocked,
             self.ship.destroyed,
-            self.ship.spd_lvl,
+            self.ship.spd_level,
             self.ship.weapon.name,
-            self.ship.weapon.lvl,
+            self.ship.weapon.level,
             self.selected['id'],
             self.selected['dmginfo']['dmg'],
             self.selected['dmginfo']['pct_sp'],
@@ -293,27 +298,6 @@ class Player:
     def rotate(self, angle: int | float):
         img = self.img_orig
         self.img = pygame.transform.rotate(img, angle)
-
-    def antialiasing(self, img: pygame.Surface):
-        """
-        Anti-aliasing by average of color code in four pixels
-        with subsequent use of the average in a smaller surface
-        """
-        rect = img.get_rect()           # width       height
-        new_img = pygame.surface.Surface((rect[2]//1, rect[3]//1))
-
-        for y in range(0, rect[3]-1):
-            for x in range(0, rect[2]-1):
-                r1, g1, b1, a = img.get_at((x,   y))
-                r2, g2, b2, _ = img.get_at((x+1, y))
-                r3, g3, b3, _ = img.get_at((x,   y+1))
-                r4, g4, b4, _ = img.get_at((x+1, y+1))
-                r = (r1 + r2 + r3 + r4) / 4
-                g = (g1 + g2 + g3 + g4) / 4
-                b = (b1 + b2 + b3 + b4) / 4
-                new_img.set_at((x, y), (r, g, b, a))
-
-        return new_img
 
     def loadData(self, players):
         player = players[self.id]
@@ -338,7 +322,7 @@ class Player:
             self.ship_path = player['ship']['path']
             self.ship = Ship(self.settings, self.ship_name, 'Stranger')
 
-        self.ship.lvl = player['ship']['lvl']
+        self.ship.level = player['ship']['level']
         self.ship.hp = 0
         self.ship.sp = 0
         self.ship.lhp = 0
@@ -360,10 +344,10 @@ class Player:
             self.ship.csp = self.ship.sp
 
         self.ship.destroyed = player['ship']['dtry']
-        self.ship.spd_lvl = player['ship']['spd_lvl']
+        self.ship.spd_level = player['ship']['spd_level']
 
         self.ship.weapon = Weapon(self.settings, player['ship']['weapon']['name'])
-        self.ship.weapon.levelUpDmg(player['ship']['weapon']['lvl'])
+        self.ship.weapon.levelUpDmg(player['ship']['weapon']['level'])
 
         self.img_orig = self.utils.loadImage(self.ship_path)
         self.img = self.img_orig
@@ -409,7 +393,7 @@ class Player:
         # if not player['ship']['sp'] == self.ship.sp:
         #     self.ship.sp = player['ship']['sp']
 
-        if not self.ship.lvl == player['ship']['lvl']: self.ship.lvl = player['ship']['lvl']
+        if not self.ship.level == player['ship']['level']: self.ship.level = player['ship']['level']
 
         # HP and SP ----------------------------------------
         if not self.ship.lhp == player['ship']['lhp']:
@@ -438,16 +422,16 @@ class Player:
         if not self.ship.csp == player['ship']['csp']: self.ship.csp = player['ship']['csp']
         #---------------------------------------------------
 
-        if not self.ship.destroyed == player['ship']['dtry']:    self.ship.destroyed = player['ship']['dtry']
-        if not self.ship.spd_lvl   == player['ship']['spd_lvl']: self.ship.spd_lvl = player['ship']['spd_lvl']
+        if not self.ship.destroyed == player['ship']['dtry']:      self.ship.destroyed = player['ship']['dtry']
+        if not self.ship.spd_level == player['ship']['spd_level']: self.ship.spd_level = player['ship']['spd_level']
 
         # if not self.ship.weapon == player['ship']['weapon']['name']:
         #     self.ship.weapon = Weapon(self.settings, player['ship']['weapon']['name'], settings)
-        #     self.ship.weapon.levelUpDmg(player['ship']['weapon']['lvl'])
+        #     self.ship.weapon.levelUpDmg(player['ship']['weapon']['level'])
         # else:
-        #     if not self.ship.weapon.lvl == player['ship']['weapon']['lvl']:
-        #         lvl = self.ship.weapon.lvl - player['ship']['weapon']['lvl']
-        #         self.ship.weapon.levelUpDmg(lvl)
+        #     if not self.ship.weapon.level == player['ship']['weapon']['level']:
+        #         level = self.ship.weapon.level - player['ship']['weapon']['level']
+        #         self.ship.weapon.levelUpDmg(level)
 
     def followPos(self, speed: int, delta_time: float):
         if self.follow_pos:
@@ -643,7 +627,7 @@ class Stranger:
         self.ship_name = stranger['ship']['name']
         self.ship = Ship(self.settings, self.ship_name, 'Stranger')
 
-        self.ship.lvl = stranger['ship']['lvl']
+        self.ship.level = stranger['ship']['level']
         self.ship.hp = 0
         self.ship.sp = 0
         self.ship.lhp = 0
@@ -665,10 +649,10 @@ class Stranger:
             self.ship.csp = self.ship.sp
 
         self.ship.destroyed = stranger['ship']['dtry']
-        self.ship.spd_lvl = stranger['ship']['spd_lvl']
+        self.ship.spd_level = stranger['ship']['spd_level']
 
         self.ship.weapon = Weapon(self.settings, stranger['ship']['weapon']['name'])
-        self.ship.weapon.levelUpDmg(stranger['ship']['weapon']['lvl'])
+        self.ship.weapon.levelUpDmg(stranger['ship']['weapon']['level'])
 
     def radioactiveZone(self):
         if (self.x < 0 or self.settings.map_limits['x'] < self.x)\

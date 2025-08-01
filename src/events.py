@@ -112,12 +112,12 @@ class Events:
 
         #--------------------------
         if event.key == pygame.K_j:                                # J - Speed level down
-            # if self.player.ship.spd_lvl > 0:
-            #     cost = self.player.ship.spd_lvl*10
+            # if self.player.ship.spd_level > 0:
+            #     cost = self.player.ship.spd_level*10
             #     self.player.creds += cost
                 self.player.ship.speedLevelDown(-10)
         if event.key == pygame.K_k:                                # K - Speed level up
-            # ~ cost = (self.player.ship.spd_lvl+1)
+            # ~ cost = (self.player.ship.spd_level+1)
             # ~ if self.player.creds >= cost:
                 # ~ self.player.creds -= cost
                 self.player.ship.speedLevelUp(10)
@@ -136,7 +136,7 @@ class Events:
                 self.player.ship.levelUpSP(10)
 
         if event.key == pygame.K_h:                                # H - Dmg level up
-            # cost = (self.player.ship.weapon.lvl+1)
+            # cost = (self.player.ship.weapon.level+1)
             # if self.player.creds >= cost:
             #     self.player.creds -= cost
                 self.player.ship.weapon.levelUpDmg(50)

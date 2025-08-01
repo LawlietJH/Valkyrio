@@ -107,7 +107,7 @@ class Menu:
             (str(self.player.creds),                    font, VERDEC),
             ('Weapon',                                  font, CYAN  ),
             (f'{str(self.player.ship.weapon.name)} '\
-                f'({self.player.ship.weapon.lvl})',     font, VERDEC),
+                f'({self.player.ship.weapon.level})',   font, VERDEC),
             ('Damage',                                  font, CYAN  ),
             (str(self.player.ship.weapon.dmg),          font, VERDEC),
             ('Speed',                                   font, CYAN  ),
@@ -152,7 +152,7 @@ class Menu:
             (str(self.player.creds),                    font, VERDEC),
             ('Weapon',                                  font, CYAN),
             (f'{str(self.player.ship.weapon.name)} '\
-                f'({self.player.ship.weapon.lvl})',     font, VERDEC),
+                f'({self.player.ship.weapon.level})',   font, VERDEC),
             ('Damage',                                  font, CYAN),
             (str(self.player.ship.weapon.dmg),          font, VERDEC),
             ('Speed',                                   font, CYAN),

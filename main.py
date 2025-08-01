@@ -316,10 +316,10 @@ def drawShipAndData(ship, des, name_color):
     if config.show['name']:
         font = config.FONT['Inc-R 18']
         if ship.ship.type == 'Stranger':
-            text_lvl = f' ({ship.ship.lvl})'
+            text_level = f' ({ship.ship.level})'
         else:
-            text_lvl = ''
-        text = f'-- [{ship.name}]{text_lvl} --'
+            text_level = ''
+        text = f'-- [{ship.name}]{text_level} --'
         text = window.renderText(text, font, name_color, 'bold')
         window.WIN.blit(text, (
                 int(ship.x)+des[0] - text.get_width() /2,
@@ -524,7 +524,7 @@ def drawConfigData():
 
     # Generate texts -----------------------------
     if config.show['weapon']:
-        text = f'Weapon: {player.ship.weapon.name} ({player.ship.weapon.lvl})'
+        text = f'Weapon: {player.ship.weapon.name} ({player.ship.weapon.level})'
         text = window.renderText(text, font, color)
         texts['weapon_name'] = text
         text = f'+Damage: {player.ship.weapon.dmg}'

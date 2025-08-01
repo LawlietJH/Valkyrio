@@ -166,6 +166,27 @@ class Utils:
         WIN.blit(mask_surf, (loc[0]-br, loc[1]+br))
         WIN.blit(mask_surf, (loc[0]+br, loc[1]-br))
 
+    def antialiasing(self, img: pygame.Surface) -> pygame.Surface:
+        """
+        Anti-aliasing by average of color code in four pixels
+        with subsequent use of the average in a smaller surface
+        """
+        rect = img.get_rect()           # width       height
+        new_img = pygame.surface.Surface((rect[2]//1, rect[3]//1))
+
+        for y in range(0, rect[3]-1):
+            for x in range(0, rect[2]-1):
+                r1, g1, b1, a = img.get_at((x,   y))
+                r2, g2, b2, _ = img.get_at((x+1, y))
+                r3, g3, b3, _ = img.get_at((x,   y+1))
+                r4, g4, b4, _ = img.get_at((x+1, y+1))
+                r = (r1 + r2 + r3 + r4) / 4
+                g = (g1 + g2 + g3 + g4) / 4
+                b = (b1 + b2 + b3 + b4) / 4
+                new_img.set_at((x, y), (r, g, b, a))
+
+        return new_img
+
     def resizeImage(self, image: pygame.Surface, scale: float = 1.0):
         if scale == 1.0: return image
         rect = image.get_rect()
@@ -174,9 +195,11 @@ class Utils:
         return image
 
     # TODO: Eliminar color negro absoluto (0,0,0) en diseño de naves.
-    def loadImage(self, filename: str, resize: float = 1.0, transparent: bool = True):
+    def loadImage(self, filename: str, resize: float = 1.0, antialiasing: bool = False, transparent: bool = True):
         try: image = pygame.image.load(filename)
         except pygame.error as message: raise SystemError
+        if antialiasing:
+            image = self.antialiasing(image)
         image = image.convert()
         image = self.resizeImage(image, resize)
         if transparent:
