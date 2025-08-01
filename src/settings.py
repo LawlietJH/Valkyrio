@@ -138,7 +138,7 @@ class Settings:
         self.baseSP = 250
         self.SHIP = {
             'Prometheus': {
-                'path': f'{self.DIR["Images"]}/Prometheus.png',
+                'path': f'{self.DIR["Images"]}/entities/Prometheus.png',
                 'weapon': 'Laser',
                 'min_dist_sel': 40,
                 'level':     1,
@@ -151,7 +151,7 @@ class Settings:
 
         self.STRANGERS = {
             'Iken': {
-                'path':     f'{self.DIR["Images"]}/Iken (Epsilon).png',
+                'path':     f'{self.DIR["Images"]}/entities/Iken (Epsilon).png',
                 'level':      1,
                 'creds':    2,
                 'exp':      10,
@@ -262,7 +262,7 @@ class Settings:
         STRANGERS = {
             'Iken': {
                 'type':     '',
-                'path':     f'{self.DIR["Images"]}/Iken ({{}}).png',
+                'path':     f'{self.DIR["Images"]}/entities/Iken ({{}}).png',
                 'level':      1,
                 'creds':    1,
                 'exp':      10,
