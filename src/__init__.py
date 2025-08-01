@@ -1,5 +1,5 @@
 from .client import Network
-from .entities.entities import Player, Stranger
+from .entities import Player, Stranger, Weapon, Ship
 from .settings import Settings
 from .utils import Utils
 from .components import Chat, Minimap, Menu, Window

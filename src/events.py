@@ -391,7 +391,7 @@ class Events:
         for id_ in players:
             if id_ == self.player.id: continue
             if not id_ in self.enemies:
-                from .entities.entities import Player
+                from .entities import Player
                 name = players[id_]['name']
                 other_player = Player(self.settings, self.utils, name, id_)
                 other_player.loadData(players)
