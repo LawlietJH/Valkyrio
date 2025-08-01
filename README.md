@@ -3,6 +3,9 @@
 
 ## Capturas
 
+Versión 0.0.9 (Alfa) Player vs Strangers (Chat Global)
+![v009A](screenshots/Valkyrio-v0.0.9.png "Versión 0.0.9 (Alfa)")
+
 Versión 0.0.6 (Alfa) Player vs Strangers (NPCs con diseño original)
 ![v006A](screenshots/Valkyrio-v0.0.6.png "Versión 0.0.6 (Alfa)")
 

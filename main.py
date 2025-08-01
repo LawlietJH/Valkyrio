@@ -138,7 +138,7 @@ def getUsername() -> str:
     # Get users name
     while True:
         # name = input('[+] Please enter your Username: ')
-        name = 'Eny'
+        name = 'Deleon'
         if config.name_min_char_len <= len(name) <= config.name_max_char_len:
             break
         else:
