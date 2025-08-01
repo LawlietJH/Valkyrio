@@ -14,7 +14,6 @@ import time
 # ======================================================================
 
 class Chat():
-
     def __init__(self):
         self.messages = {
             'global': []
@@ -30,7 +29,7 @@ class Chat():
 
 #----------------
 
-utils  = Utils()
+utils = Utils()
 config = Settings(utils, is_client=False)
 chat = Chat()
 
@@ -38,7 +37,7 @@ chat = Chat()
 # FUNCTIONS ============================================================
 # ======================================================================
 
-def threaded_bot(stranger_id, stranger_name, lvl_min=1, lvl_max=10):
+def threaded_bot(stranger_id: int, stranger_name: str, lvl_min: int = 1, lvl_max: int = 10):
     global connections, players, game_time, _id #, current_levels
 
     if lvl_min < 1: lvl_min = 1
@@ -62,7 +61,6 @@ def threaded_bot(stranger_id, stranger_name, lvl_min=1, lvl_max=10):
         stranger_info = config.getStranger(stranger_name, r)
 
         map_limits = config.MAP[config.map_name]
-        FPS = 240
 
         players[stranger_id] = {
             'x':     random.randrange(20*config.posdiv, (map_limits['x']-20)*config.posdiv),
@@ -103,10 +101,9 @@ def threaded_bot(stranger_id, stranger_name, lvl_min=1, lvl_max=10):
 
         deltaTime = 1
 
+        # TODO: Hacer opaco cuando es destruido
         while stranger.ship.chp > 0:
-
             try:
-
                 game_time = int(time.perf_counter()-start_time)
 
                 stranger.chkDmgRecv(players)
@@ -114,7 +111,7 @@ def threaded_bot(stranger_id, stranger_name, lvl_min=1, lvl_max=10):
                 stranger.ship.healHP()
                 stranger.ship.healSP()
                 stranger.radioactiveZone()
-                stranger.randomMove(players, game_time, deltaTime)
+                stranger.randomMove(players, game_time, FPS)
 
                 deltaTime = stranger.deltaTime(FPS) / config.dtdiv
 
@@ -138,7 +135,7 @@ def threaded_bot(stranger_id, stranger_name, lvl_min=1, lvl_max=10):
             players[stranger.primary_atk]['exp']   += players[stranger_id]['exp']
         except: pass
 
-        time.sleep(5)
+        time.sleep(3)
 
         del players[stranger_id]
 
@@ -148,7 +145,6 @@ def threaded_bot(stranger_id, stranger_name, lvl_min=1, lvl_max=10):
 def threaded_client(conn, _id):
     global connections, players, game_time, start
 
-    FPS = 1/1024
     current_id = _id
     map_limits = config.MAP[config.map_name]
 
@@ -300,7 +296,7 @@ def threaded_client(conn, _id):
                 # print(e, 'Error')
             break
 
-        time.sleep(FPS)
+        time.sleep(1/FPS)
 
     print(f'[DISCONNECT] Name: {name}, Client Id: {current_id} disconnected')
 
@@ -330,6 +326,7 @@ S.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 PORT = 57575
 HOST_NAME = socket.gethostname()
 SERVER_IP = socket.gethostbyname(HOST_NAME)
+FPS = 240
 
 # try to connect to server
 try:
@@ -360,10 +357,10 @@ current_levels = {
 
 # STRANGERS ============================================================
 
-for i in range(10):
+for i in range(20):
     i+=1
     if i <= 20:
-        generateStranger('Iken',  0, 12)
+        generateStranger('Iken',  1, 12)
     elif i <= 24:
         generateStranger('Iken', 13, 24)
     elif i <= 26:
@@ -383,7 +380,6 @@ print('[GAME] Setting up level')
 print('[SERVER] Waiting for connections')
 
 while True:
-
     host, addr = S.accept()
     print(f'[CONNECTION] Connected to: {addr}')
 
@@ -398,5 +394,4 @@ while True:
 
 print('[SERVER] Server offline')
 
-
-
+#TODO: Implementar atajo para cerrar el servidor

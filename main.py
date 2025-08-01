@@ -11,13 +11,13 @@ import os
 
 __project__ = 'Zwem'
 __author__ = 'LawlietJH'
-__version__ = '0.0.8 (Alfa)'
+__version__ = '0.0.9 (Alfa)'
 
 __license__ = 'MIT'
 __status__ = 'Development'
 __framework__ = 'Pygame'
 __description__ = 'Juego 2D online con pygame inspirado en los juegos clásicos de destruir naves.'
-__version_date__ = '31/07/2025'
+__version_date__ = '01/08/2025'
 
 #=======================================================================
 #=======================================================================
@@ -113,7 +113,6 @@ class Menu:
         elif config.pos_tab_menu == 3: self.drawMenuTabConstellations(*positions)
 
     def drawMenuTabInfo(self, x, y, w, h):                  # Tab 1
-
         CYAN   = config.COLOR['Cyan']
         VERDEC = config.COLOR['Verde Claro']
         font   = config.FONT['Inc-R 16']
@@ -133,7 +132,7 @@ class Menu:
             ('Speed',                              font, CYAN  ),
             (str(player.ship.speed),               font, VERDEC),
             ('FPS',                                font, CYAN  ),
-            (str(config.fps),                      font, VERDEC),
+            (str(config.current_fps),              font, VERDEC),
             ('Coords',                             font, CYAN  ),
             ('({},{})'.format(
                     int(player.x/config.posdiv),
@@ -159,7 +158,6 @@ class Menu:
             WIN.blit(renderText(*text), (x+(despX*(i%2)), y+(despY*(i//2))))
 
     def drawMenuTabEnhance(self, x, y, w, h):               # Tab 2
-
         CYAN   = config.COLOR['Cyan']
         VERDEC = config.COLOR['Verde Claro']
         font   = config.FONT['Inc-R 16']
@@ -179,7 +177,7 @@ class Menu:
             ('Speed',                              font, CYAN),
             (str(player.ship.speed),               font, VERDEC),
             ('FPS',                                font, CYAN),
-            (str(config.fps),                      font, VERDEC),
+            (str(config.current_fps),              font, VERDEC),
             ('Coords',                             font, CYAN),
             ('({},{})'.format(
                     int(player.x/config.posdiv),
@@ -250,14 +248,14 @@ def keysDown(event):
             chat.chat_text_active = False
 
     if not config.open_menu:
-        if event.key == pygame.K_o:                                # O - Hide/Show Names
+        if event.key == pygame.K_o:                                 # O - Hide/Show Names
             config.show['name'] = not config.show['name']
-        if event.key == pygame.K_p:                                # P - Hide/Show HP-SP
+        if event.key == pygame.K_p:                                 # P - Hide/Show HP-SP
             config.show['hp-sp'] = not config.show['hp-sp']
 
     #--------------------------
 
-    if event.key == pygame.K_F11:
+    if event.key == pygame.K_F11:                                   # F11 - Fullscreen
         config.switchFullScreen()
 
     #--------------------------
@@ -460,7 +458,7 @@ def detectEvents():
             #-------------------------------------
             if con: continue
 
-def movements(deltaTime):
+def movements(delta_time):
         # Control de input del chat --------------
         if chat.chat_text_active: return
         #-----------------------------------------
@@ -528,8 +526,8 @@ def movements(deltaTime):
             player.ship.time_hp_init = 0
             player.angle = degrees
             player.rotate(degrees)
-            player.x += round(x * deltaTime)
-            player.y += round(y * deltaTime)
+            player.x += round(x * delta_time, 2)
+            player.y += round(y * delta_time, 2)
         else:
             # Recibir HP bajo sus reglas -------------------------------
             player.ship.healHP()
@@ -686,9 +684,8 @@ def selectEnemy(event):
             return players
 
 def calcFrames():
-
     if utils.perSecond():
-        config.fps = config.curr_frame
+        config.current_fps = config.curr_frame
         config.curr_frame = 0
     else:
         config.curr_frame += 1
@@ -803,7 +800,6 @@ def drawChat():
     text = renderText(chat.chat_name, font, config.COLOR['Blanco'], 'bold')
     if not chat.chat_name_rect == (text.get_width(), text.get_height()):
         chat.chat_name_rect = (text.get_width(), text.get_height())
-        print(chat.chat_name_rect)
     WIN.blit(text, (chat.chat_x, chat.chat_y-text.get_height()))
 
     # Draw Global Chat Messages ------------------
@@ -1161,7 +1157,7 @@ def drawConfigData():
         text = renderText(text, font, color)
         texts['speed'] = text
     if config.show['fps']:
-        text = 'FPS: '+str(config.fps)
+        text = 'FPS: '+str(config.current_fps)
         text = renderText(text, font, color)
         texts['fps'] = text
     if config.show['pos']:
@@ -1290,17 +1286,16 @@ def createWindow():
     # Music
     # config.music.load(config.MUSIC['JNATHYN - Genesis'])
     # config.music.set_volume(config.music_vol/100)
-    ''# config.music.play(-1)
+    # config.music.play(-1)
 
 #=======================================================================
 
 def main():
-
     global game_time
 
     config.run = True
-    deltaTime = 1                    # Delta Time
-    lastDeltaTime = 999
+    delta_time = 1                    # Delta Time
+    last_delta_time = 999
 
     clock = pygame.time.Clock()
 
@@ -1338,28 +1333,29 @@ def main():
         #---------------------------------------------------------------
 
         # Update Data:
-        updateOtherPlayers(players)                            # Actualiza los datos de los enemigos
+        updateOtherPlayers(players)                             # Actualiza los datos de los enemigos
 
         # Actions:
-        lookAtEnemy()                                        # Si el enemigo esta seleccionado o el jugador es seleccionado, las naves giran apuntandose.
-        setAttack()                                            # Agrega el daño causado al enemigo
-        radioactiveZone()                                    # Reglas para la zona radioactiva
-        calcFrames()                                        # Calcula la cantidad de fotogramas por segundo.
+        lookAtEnemy()                                           # Si el enemigo esta seleccionado o el jugador es seleccionado, las naves giran apuntandose.
+        setAttack()                                             # Agrega el daño causado al enemigo
+        radioactiveZone()                                       # Reglas para la zona radioactiva
+        calcFrames()                                            # Calcula la cantidad de fotogramas por segundo.
 
+        # if delta_time < 2 * 1 / config.FPS:
         # Draw Window:
-        redrawWindow()                                        # Redibuja todo (1 Fotograma)
+        redrawWindow()                                          # Redibuja todo (1 Fotograma)
 
         # Events:
-        if not deltaTime > lastDeltaTime*10:
-            movements(deltaTime)                            # Detecta los movimientos direccionales
-        lastDeltaTime = deltaTime
-        detectEvents()                                        # Detecta los eventos de Mouse y Teclado
+        if not delta_time > last_delta_time*10:
+            movements(delta_time)                               # Detecta los movimientos direccionales
+        last_delta_time = delta_time
+        detectEvents()                                          # Detecta los eventos de Mouse y Teclado
 
         # Update Window Data
-        pygame.display.update()                                # Actualiza la ventana con todos los cambios
+        pygame.display.update()                                 # Actualiza la ventana con todos los cambios
 
         # Delta Time:
-        deltaTime = clock.tick(config.MFPS) / config.dtdiv    # Hace una breve pausa para respetar los Fotogramas por segundo y devuelve el "Delta Time"/1000
+        delta_time = clock.tick(config.FPS) / config.dtdiv      # Hace una breve pausa para respetar los Fotogramas por segundo y devuelve el "Delta Time"/1000
 
     server.disconnect()
     pygame.quit()

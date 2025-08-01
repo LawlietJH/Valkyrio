@@ -14,7 +14,7 @@ class Cache:
 
     def _get_key(self, func, args, kwargs):
         if args and self._is_self(args[0], func):
-            args = f'(self,{str(args[1:])[1:]}'
+            args = f'(self, {str(args[1:])[1:]}'
         return f'{__name__}.{func.__qualname__}({args},{kwargs})'
 
     def _is_no_cache(self, kwargs):

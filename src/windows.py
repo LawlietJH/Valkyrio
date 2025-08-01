@@ -6,8 +6,8 @@ class Minimap:
         self.settings = settings
         self.player = player
 
-        # Map settings
-        self.map_name = 'Zwem'
+        # Configuraciones del Minimapa
+        self.map_name = 'Arkon'
         self.map_name_rect = (0,0)
         self.map_w = 150
         self.map_h = 120
@@ -18,7 +18,7 @@ class Minimap:
         self.map_move_x = self.settings.W - self.map_w - 5
         self.map_move_y = self.settings.H - self.map_h - 5
 
-        # Current Quadrant on Screen
+        # Cuadrante Actual en Pantalla
         self.quad = 4
 
         # Tamaño del minimapa
@@ -195,10 +195,9 @@ class Chat:
         self.settings = settings
 
         self.messages = {
-            'global': [
-                ('Enylaine','Hola :D'),
-                ('LOL','xD')
-            ]
+            'global': [],   # list[tuples[str, str]] = [(username, message), ...]
+            'team': [],
+            'clan': []
         }
 
         self.chat_name = 'Chat'
@@ -249,7 +248,7 @@ class Chat:
             self.chat_w -(anc*2), self.chat_h - tab - anc
         ]
 
-    def perSecond(self, t=1):
+    def perSecond(self, t: int = 1):
         if time.perf_counter() - self.init_time >= t:
             self.init_time = time.perf_counter()
             return True
@@ -268,7 +267,7 @@ class Chat:
             if self.chat_text_active:
                 self.chat_text_active = False
 
-    def setGlobalMessages(self, messages):
+    def setGlobalMessages(self, messages: list[tuple[str, str]]):
         self.messages['global'] = messages
 
     def limitMove(self): # Limita el movimiento del mapa para que no pueda salir de la pantalla
@@ -281,11 +280,11 @@ class Chat:
         if self.chat_y-self.chat_name_rect[1]-5 < 0:
             self.chat_y = self.chat_name_rect[1]+5
 
-    def quadrant(self, w, h):
-        if   self.chat_x > w//2 and self.chat_y < h//2: self.quad = 1           # Right Upper Quadrant
-        elif self.chat_x < w//2 and self.chat_y < h//2: self.quad = 2           # Left  Upper Quadrant
-        elif self.chat_x < w//2 and self.chat_y > h//2: self.quad = 3           # Left  Lower Quadrant
-        elif self.chat_x > w//2 and self.chat_y > h//2: self.quad = 4           # Right Lower Quadrant
+    def quadrant(self, w: int, h: int):
+        if   self.chat_x > w//2 and self.chat_y < h//2: self.quad = 1           # Upper Right Quadrant
+        elif self.chat_x < w//2 and self.chat_y < h//2: self.quad = 2           # Upper Left  Quadrant
+        elif self.chat_x < w//2 and self.chat_y > h//2: self.quad = 3           # Lower Left  Quadrant
+        elif self.chat_x > w//2 and self.chat_y > h//2: self.quad = 4           # Lower Right Quadrant
 
     def mouseButtonDown(self, event):
         pos_x, pos_y = event.pos

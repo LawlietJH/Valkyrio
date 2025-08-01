@@ -21,11 +21,11 @@ class Weapon:
         self.lvl  = 0
         self.init_time = 0
 
-    def levelUpDmg(self, lvl=1) -> None:
+    def levelUpDmg(self, lvl: int = 1) -> None:
         self.lvl += lvl
         self.dmg += lvl*self.inc
 
-    def perSecond(self, t=1) -> bool:
+    def perSecond(self, t: int = 1) -> bool:
         if time.perf_counter() - self.init_time >= t:
             self.init_time = time.perf_counter()
             return True
@@ -33,10 +33,10 @@ class Weapon:
 
 
 class Ship:
-    def __init__(self, settings, name, type_='Human'):
+    def __init__(self, settings, name: str, type: str = 'Human'):
         self.settings = settings
         self.name = name
-        self.type = type_
+        self.type = type
         if self.type == 'Human':
             self.base = self.settings.SHIP[name]
             self.weapon = Weapon(self.settings, self.base['weapon'])
@@ -82,7 +82,7 @@ class Ship:
         speed += val+add
         return int(speed)
 
-    def getPctResDmgRad(self):      # Control del nivel de radiacion
+    def getPctResDmgRad(self):              # Control del nivel de radiacion
         if self.lvl >= 28:
             if self.lvl//100 > 1:
                 return 1
@@ -91,32 +91,33 @@ class Ship:
         else:
             return 1
 
-    def speedLevelUp(self, lvl=1):
+    def speedLevelUp(self, lvl: int = 1):
         if self.spd_lvl+lvl <= self.settings.MAX_SPD_LVL:
             self.spd_lvl += lvl
         else:
             self.spd_lvl = self.settings.MAX_SPD_LVL
 
-    def speedLevelDown(self, lvl=-1):
+    def speedLevelDown(self, lvl: int = -1):
         if self.spd_lvl+lvl >= 0:
             self.spd_lvl += lvl
         else:
             self.spd_lvl = 0
 
-    def levelUpHP(self, lvl=1):                     # Incrementa de nivel el HP
+    def levelUpHP(self, lvl: int = 1):             # Incrementa de nivel el HP
         inc = self.base['hp'] * lvl
         self.hp += inc
         self.chp += inc
         self.lhp += lvl
 
-    def levelUpSP(self, lvl=1):                     # Incrementa de nivel el SP
+    def levelUpSP(self, lvl: int = 1):             # Incrementa de nivel el SP
         if self.shield_unlocked:
             inc = self.base['sp'] * lvl
             self.sp += inc
             self.csp += inc
             self.lsp += lvl
 
-    def recvDamage(self, damage, pct_sp=None, mult=1, draw=True):       # Registra el daño recibido para mostrarlo
+    # Registra el daño recibido para mostrarlo
+    def recvDamage(self, damage: int, pct_sp: int = None, mult: float = 1.0, draw: bool = True):
         if self.destroyed: return
 
         self.heal_hp = False
@@ -146,7 +147,7 @@ class Ship:
 
         if draw: self.damageRecv.append([damage*mult, time.perf_counter()])
 
-    def healHP(self, pct=10, sec_init=6, sec=3):
+    def healHP(self, pct: int = 10, sec_init: int = 6, sec: int = 3):
         if not self.chp >= self.hp:
             if self.heal_hp:
                 if self.time_hp_init == 0:
@@ -162,7 +163,7 @@ class Ship:
                 if time.perf_counter()-self.time_hp_init >= sec_init:
                     self.heal_hp = True
 
-    def healSP(self, pct=5, sec_init=10, sec=1):
+    def healSP(self, pct: int = 5, sec_init: int = 10, sec: int = 1):
         if not self.csp >= self.sp:
             if self.heal_sp:
                 if self.time_sp_init == 0:
@@ -288,17 +289,17 @@ class Player:
 
         return data
 
-    def rotate(self, angle):
+    def rotate(self, angle: int | float):
         img = self.img_orig
         self.img = pygame.transform.rotate(img, angle)
 
-    def resize(self, image, scale=1):
+    def resize(self, image: pygame.Surface, scale: float = 1.0):
         rect = image.get_rect()
         wdth_hgt = (int(rect[2]*scale), int(rect[3]*scale))
         image = pygame.transform.scale(image, wdth_hgt)
         return image
 
-    def antialiasing(self, img):
+    def antialiasing(self, img: pygame.Surface):
         """
         Anti-aliasing by average of color code in four pixels
         with subsequent use of the average in a smaller surface
@@ -308,14 +309,14 @@ class Player:
 
         for y in range(0, rect[3]-1):
             for x in range(0, rect[2]-1):
-                r1, g1, b1, a1 = img.get_at((x,   y))
-                r2, g2, b2, a2 = img.get_at((x+1, y))
-                r3, g3, b3, a3 = img.get_at((x,   y+1))
-                r4, g4, b4, a4 = img.get_at((x+1, y+1))
+                r1, g1, b1, a = img.get_at((x,   y))
+                r2, g2, b2, _ = img.get_at((x+1, y))
+                r3, g3, b3, _ = img.get_at((x,   y+1))
+                r4, g4, b4, _ = img.get_at((x+1, y+1))
                 r = (r1 + r2 + r3 + r4) / 4
                 g = (g1 + g2 + g3 + g4) / 4
                 b = (b1 + b2 + b3 + b4) / 4
-                new_img.set_at((x, y), (r, g, b, 255))
+                new_img.set_at((x, y), (r, g, b, a))
 
         return new_img
 
@@ -454,8 +455,7 @@ class Player:
         #         self.ship.weapon.levelUpDmg(lvl)
 
     # TODO: Eliminar color negro absoluto (0,0,0) en diseño de naves.
-    def loadImage(self, filename, transparent=True):
-        print(filename)
+    def loadImage(self, filename: str, transparent: bool = True):
         try: image = pygame.image.load(filename)
         except pygame.error as message: raise SystemError
         image = image.convert()
@@ -465,7 +465,7 @@ class Player:
             image.set_colorkey(color, RLEACCEL)
         return image
 
-    def followPos(self, speed):
+    def followPos(self, speed: int):
         if self.follow_pos:
             x = int(self.x)
             y = int(self.y)
@@ -520,7 +520,7 @@ class Player:
 
 
 class Stranger:
-    def __init__(self, settings, name, id_):
+    def __init__(self, settings, name: str, id: int):
         self.settings = settings
 
         self.name = name
@@ -529,7 +529,7 @@ class Stranger:
 
         self.creds = 0
         self.exp = 0
-        self.id = id_
+        self.id = id
         self.x = 0
         self.y = 0
 
@@ -560,7 +560,7 @@ class Stranger:
             int(self.y/self.settings.posdiv)
         )
 
-    def setData(self, players):
+    def setData(self, players: dict):
         data_f  = '{{'
         data_f +=   '"x":{},'
         data_f +=   '"y":{},'
@@ -635,7 +635,7 @@ class Stranger:
 
         return data
 
-    def loadData(self, players):
+    def loadData(self, players: dict):
         stranger = players[self.id]
 
         self.x = stranger['x']
@@ -692,7 +692,7 @@ class Stranger:
             if self.ship.timeOnBorder > 0:
                 self.ship.timeOnBorder = 0
 
-    def chkDmgRecv(self, players):
+    def chkDmgRecv(self, players: dict):
         for enemy_id, values in players[self.id]['dmginfo'].items():
             for dmg, pct_sp, mult, t in values:
                 self.ship.recvDamage(dmg, pct_sp, mult)
@@ -701,7 +701,7 @@ class Stranger:
             or (not self.primary_atk == None and not self.primary_atk in players):
                 self.primary_atk = enemy_id
 
-    def deltaTime(self, FPS, mili=True):
+    def deltaTime(self, FPS: int, mili: bool = True):
         delta = time.perf_counter() - self.delta_t_init
         self.delta_t_init = time.perf_counter()
 
@@ -711,7 +711,7 @@ class Stranger:
 
         return delta
 
-    def setAttack(self, players, game_time):
+    def setAttack(self, players: dict, game_time: int):
         # Draw Laser and damage on enemies:
         if self.selected['id'] >= 0 and self.attacking:
             if self.selected['dist'] < self.ship.weapon.dist:
@@ -747,7 +747,7 @@ class Stranger:
                     self.selected['dist'] = -1
                     self.attacking = False
 
-    def lookAtPlayer(self, p_id, data):
+    def lookAtPlayer(self, p_id: str, data: dict):
         # Gira hacia el enemigo
         if not p_id == self.selected['id']\
         and self.selected['id'] >= 0:
@@ -781,12 +781,12 @@ class Stranger:
         else:
             self.attacking = False
 
-    def moveOnMap(self, speed):
+    def moveOnMap(self, speed: int):
         limitX = self.settings.MAP[self.settings.map_name]['x']
         limitY = self.settings.MAP[self.settings.map_name]['y']
         x = int(self.x/self.settings.posdiv)
         y = int(self.y/self.settings.posdiv)
-        degrees = 0
+        degrees = speedX = speedY = 0
 
         if self.wait:
             if time.perf_counter() - self.t_init_move >= self.t_wait_move:
@@ -796,35 +796,35 @@ class Stranger:
                 if self.dir in ['ru','ur']:
                     degrees = 0+45
                     mov_speed = self.settings.utils.diagonal(speed, degrees)
-                    self.x += mov_speed['x']
-                    self.y -= mov_speed['y']
+                    speedX += mov_speed['x']
+                    speedY -= mov_speed['y']
                 elif self.dir in ['lu','ul']:
                     degrees = 90+45
                     mov_speed = self.settings.utils.diagonal(speed, degrees)
-                    self.x -= mov_speed['y']
-                    self.y -= mov_speed['x']
+                    speedX -= mov_speed['y']
+                    speedY -= mov_speed['x']
                 elif self.dir in ['ld','dl']:
                     degrees = 180+45
                     mov_speed = self.settings.utils.diagonal(speed, degrees)
-                    self.x -= mov_speed['x']
-                    self.y += mov_speed['y']
+                    speedX -= mov_speed['x']
+                    speedY += mov_speed['y']
                 elif self.dir in ['rd','dr']:
                     degrees = 270+45
                     mov_speed = self.settings.utils.diagonal(speed, degrees)
-                    self.x += mov_speed['y']
-                    self.y += mov_speed['x']
+                    speedX += mov_speed['y']
+                    speedY += mov_speed['x']
                 elif 'r' in self.dir:
                     degrees = 0
-                    self.x += speed
+                    speedX += speed
                 elif 'u' in self.dir:
                     degrees = 90
-                    self.y -= speed
+                    speedY -= speed
                 elif 'l' in self.dir:
                     degrees = 180
-                    self.x -= speed
+                    speedX -= speed
                 elif 'd' in self.dir:
                     degrees = 270
-                    self.y += speed
+                    speedY += speed
 
                 self.angle = degrees
 
@@ -839,19 +839,22 @@ class Stranger:
                 # self.t_init_move = time.perf_counter()
 
                 if x <= 10:
-                    self.x += speed
+                    speedX += speed
                     self.dir = random.choice(['r','ru','rd'])
                 elif x >= limitX-10:
-                    self.x -= speed
+                    speedX -= speed
                     self.dir = random.choice(['l','lu','ld'])
                 elif y <= 10:
-                    self.y += speed
+                    speedY += speed
                     self.dir = random.choice(['d','dl','dr'])
                 elif y >= limitY-10:
-                    self.y -= speed
+                    speedY -= speed
                     self.dir = random.choice(['u','ul','ur'])
 
-    def followAndAttack(self, speed, enemy):
+            self.x += speedX
+            self.y += speedY
+
+    def followAndAttack(self, speed: int, enemy: dict):
         x = int(self.x/self.settings.posdiv)
         y = int(self.y/self.settings.posdiv)
         ex = int(enemy['x']/self.settings.posdiv)
@@ -863,31 +866,35 @@ class Stranger:
 
         mov_speed = self.settings.utils.diagonal(speed, self.angle)
 
+        speedX = speedY = 0
+
         if dist_px >= 200:
             if x > ex and y < ey:
-                self.x -= mov_speed['x']
-                self.y += mov_speed['y']
+                speedX -= mov_speed['x']
+                speedY += mov_speed['y']
             elif x < ex and y < ey:
-                self.x += mov_speed['x']
-                self.y += mov_speed['y']
+                speedX += mov_speed['x']
+                speedY += mov_speed['y']
             elif x < ex and y > ey:
-                self.x += mov_speed['x']
-                self.y -= mov_speed['y']
+                speedX += mov_speed['x']
+                speedY -= mov_speed['y']
             elif x > ex and y > ey:
-                self.x -= mov_speed['x']
-                self.y -= mov_speed['y']
+                speedX -= mov_speed['x']
+                speedY -= mov_speed['y']
             elif x > ex and y == ey:
-                self.x -= speed
+                speedX -= speed
             elif x < ex and y == ey:
-                self.x += speed
+                speedX += speed
             elif y > ey and x == ex:
-                self.y -= speed
+                speedY -= speed
             elif y < ey and x == ex:
-                self.y += speed
+                speedY += speed
 
-    def randomMove(self, players, game_time, deltaTime):
-        speed = self.ship.speed / 100
-        # speed *= deltaTime
+            self.x += speedX
+            self.y += speedY
+
+    def randomMove(self, players: dict, game_time: int, server_fps: int):
+        speed = round(self.ship.speed / server_fps, 2)
 
         if not self.dir:
             self.wait = False
@@ -912,4 +919,3 @@ class Stranger:
             self.followAndAttack(speed, enemy)
 
         else: self.moveOnMap(speed)
-

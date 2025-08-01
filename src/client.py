@@ -27,7 +27,7 @@ class Network:
 			else:
 				self.client.send(str.encode(data))
 			reply = self.client.recv(kb*16)
-			# ~ print(len(reply))
+			# print(len(reply))
 			try:
 				reply = pickle.loads(reply)
 			except Exception as e:

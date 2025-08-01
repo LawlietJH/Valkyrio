@@ -101,7 +101,7 @@ class Settings:
             'acc_dmg':       True,      # Show accumulated damage
             'map_enemies':   True,      # Show all enemies on minimap
             'matrix_bg_fix': True,      # Show background matrix fixed
-            'chat':          False      # Show Chat
+            'chat':          True       # Show Chat
         }
 
         self.WEAPON = {
@@ -169,9 +169,9 @@ class Settings:
         }
 
         self.MAP = {
-            'Zwem':   { 'x': 200, 'y': 150 },
-            'Karont': { 'x': 250, 'y': 200 },
-            'Arkont': { 'x': 300, 'y': 250 }
+            'Zwem':  { 'x': 200, 'y': 150 },
+            'Karon': { 'x': 250, 'y': 200 },
+            'Arkon': { 'x': 300, 'y': 250 }
         }
 
         self.roundRects = {}                # Created round rects
@@ -206,14 +206,16 @@ class Settings:
         self.init_time_windowed = 0
         self.antialiasing = True            # Anti-aliasing is a method by which you can remove irregularities that appear in objects in PC games.
         self.run = False                    # Game Run
-        self.MFPS = 120                     # Max Frames per Second
-        self.fps = 60                       # Number of Frames per Second
+        self.MAX_FPS = 240                  # Max Frames per Second
+        self.MIN_FPS = 30                   # Max Frames per Second
+        self.FPS = 240                      # Max Frames per Second
+        self.current_fps = self.FPS         # Number of Frames per Second
 
         # Music settings
         self.music_vol = 20                 # Music volume
 
         # Map settings
-        self.map_name = 'Zwem'
+        self.map_name = 'Arkon'
 
     # Properties ---------------------------------
 

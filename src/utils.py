@@ -16,40 +16,41 @@ class Utils:
         self.init_time = time.perf_counter()
         self.bz2 = Bz2()
 
-    def perSecond(self, t=1):
+    def perSecond(self, t: int = 1) -> bool:
         if time.perf_counter() - self.init_time >= t:
             self.init_time = time.perf_counter()
             return True
         return False
 
-    def cos(self, deg=45):
+    def cos(self, deg: int = 45) -> float:
         rad = math.radians(deg)
         return math.cos(rad)
 
-    def sin(self, deg=45):
+    def sin(self, deg: int = 45) -> float:
         rad = math.radians(deg)
         return math.sin(rad)
 
-    def diagonal(self, h, deg=45, rounded=True):
+    @cache.cache
+    def diagonal(self, speed: int | float, deg: int = 45, rounded: bool | int = False) -> dict:
         inv = True if deg//90 in [1,-1,3,-3] else False 
         deg = deg % 90
 
         if inv:
-            co = h * self.cos(deg)
-            ca = h * self.sin(deg)
+            y = speed * self.cos(deg)
+            x = speed * self.sin(deg)
         else:
-            ca = h * self.cos(deg)
-            co = h * self.sin(deg)
+            x = speed * self.cos(deg)
+            y = speed * self.sin(deg)
 
         if rounded:
             if str(rounded).isnumeric():
-                return {'x': round(ca, rounded), 'y': round(co, rounded)}
+                return {'x': round(x, rounded), 'y': round(y, rounded)}
             else:
-                return {'x': round(ca, 2), 'y': round(co, 2)}
+                return {'x': round(x, 4), 'y': round(y, 4)}
         else:
-            return {'x': ca, 'y': co}
+            return {'x': x, 'y': y}
 
-    def euclideanDistance(self, A, B):
+    def euclideanDistance(self, A: int, B: int) -> int:
         ''' Formula: d(A,B) = sqrt( (Xb-Xa)^2 + (Yb-Ya)^2 )
         Donde: A=(Xa,Ya), B=(Xb,Yb)
         '''
@@ -60,7 +61,7 @@ class Utils:
         d = math.sqrt(X+Y)
         return d
 
-    def getAngle(self, A, B):
+    def getAngle(self, A: int, B: int) -> int:
         ''' Donde: A=(Xa,Ya), B=(Xb,Yb) '''
         Xa, Ya = A
         Xb, Yb = B
@@ -68,9 +69,10 @@ class Utils:
         Y = (Yb-Ya)
         atan2 = math.atan2(Y, X)
         angle = math.degrees(atan2)
-        return angle
+        return round(angle)
 
-    def convertTime(self, t):
+    @cache.cache
+    def convertTime(self, t: str | int) -> str:
         if type(t) == str: return t
         if int(t) < 60: return str(t) + 's'
         else:
@@ -80,7 +82,7 @@ class Utils:
                 seconds = '0' + seconds
             return minutes + ':' + seconds
 
-    def roundRect(self, rect, color, rad=20, border=0, inside=(0,0,0,0)):
+    def roundRect(self, rect: pygame.Rect, color: tuple, rad: int = 20, border: int = 0, inside: tuple = (0,0,0,0)) -> tuple[pygame.Surface, pygame.Rect]:
         rect = pygame.Rect(rect)
         zeroed_rect = rect.copy()
         zeroed_rect.topleft = 0,0
@@ -92,14 +94,14 @@ class Utils:
             self._renderRegion(image, zeroed_rect, inside, rad)
         return (image, rect)
 
-    def _renderRegion(self, image, rect, color, rad):
+    def _renderRegion(self, image: pygame.Surface, rect: pygame.Rect, color: tuple, rad: int):
         corners = rect.inflate(-2*rad, -2*rad)
         for attribute in ('topleft', 'topright', 'bottomleft', 'bottomright'):
             pygame.draw.circle(image, color, getattr(corners,attribute), rad)
         image.fill(color, rect.inflate(-2*rad,0))
         image.fill(color, rect.inflate(0,-2*rad))
 
-    def moveWindow(self, win_x, win_y, win_w, win_h):
+    def moveWindow(self, win_x: int, win_y: int, win_w: int, win_h: int):
         from ctypes import windll
         # NOSIZE = 1
         # NOMOVE = 2
@@ -110,7 +112,7 @@ class Utils:
         hwnd = pygame.display.get_wm_info()['window']
         windll.user32.MoveWindow(hwnd, win_x, win_y, win_w, win_h, False)
 
-    def splitText(self, text, chunk_size=32):
+    def splitText(self, text: str, chunk_size: int = 32) -> list:
         output = []
         chunks  = len(text)//chunk_size
         chunks += 1 if len(text)%chunk_size > 0 else 1
@@ -134,7 +136,7 @@ class Utils:
 
         return output
 
-    def colorMask(self, surf, color, color_to_replace=(255,255,255)):
+    def colorMask(self, surf: pygame.Surface, color: tuple, color_to_replace: tuple = (255,255,255)):
         ''' pygame.transform.threshold(
             mask_image, img, color_to_replace,
             (0,0,0,0), color, 1, None, True)
@@ -144,7 +146,7 @@ class Utils:
             (0,0,0,0), color, 1, None, True
         )
 
-    def perfectOutline(self, WIN, img, loc, color=(0,0,0), alpha=255, br=1):
+    def perfectOutline(self, WIN: pygame.Surface, img: pygame.Surface, loc: tuple, color: tuple = (0,0,0), alpha: int = 255, br: int = 1):
         mask = pygame.mask.from_surface(img)
         mask_surf = mask.to_surface()
 
