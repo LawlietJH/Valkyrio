@@ -106,7 +106,7 @@ class Settings:
 
         self.WEAPON = {
             'Laser-mid': {
-                'path': f'{self.DIR["Images"]}/weapons/laser-red.png',
+                'weapon': f'{self.DIR["Images"]}/weapons/laser-red.png',
                 'dmg': 50,          # Base damage
                 'inc': 5,           # Damage increment per level
                 'ammo': 1000,       # Ammunition
@@ -115,7 +115,7 @@ class Settings:
                 'mult': 1           # Damage multiplier
             },
             'Laser': {
-                'path': f'{self.DIR["Images"]}/weapons/laser-red.png',
+                'weapon': f'{self.DIR["Images"]}/weapons/laser-red.png',
                 'dmg': 100,         # Base damage
                 'inc': 10,          # Damage increment per level
                 'ammo': 1000,       # Ammunition
@@ -124,7 +124,7 @@ class Settings:
                 'mult': 1           # Damage multiplier
             },
             'Plasma': {
-                'path': f'{self.DIR["Images"]}/weapons/plasma-green.png',
+                'weapon': f'{self.DIR["Images"]}/weapons/plasma-green.png',
                 'dmg': 1000,        # Base damage
                 'inc': 50,          # Damage increment per level
                 'ammo': 100,        # Ammunition

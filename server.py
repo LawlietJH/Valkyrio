@@ -94,7 +94,8 @@ def threaded_bot(stranger_id: int, stranger_name: str, level_min: int = 1, level
             'dmginfo': {}
         }
 
-        stranger = Stranger(config, players[stranger_id], stranger_id)
+        # TODO: Reutilizar el utils desde el settings.utils.
+        stranger = Stranger(config, utils, players[stranger_id], stranger_id)
         stranger.loadData(players)
 
         print(f"[LOG] {stranger_name} ({stranger.ship.level}) Generated. ID: {stranger_id} ({int(stranger.x/config.posdiv)},{int(stranger.y/config.posdiv)})")

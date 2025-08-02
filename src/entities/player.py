@@ -139,10 +139,10 @@ class Player:
         self.ship_name = player['ship']['name']
         if player['type'] == 'Human':
             self.ship_path = self.settings.SHIP[self.ship_name]['path']
-            self.ship = Ship(self.settings, self.ship_name)
+            self.ship = Ship(self.settings, self.utils, self.ship_name)
         else:
             self.ship_path = player['ship']['path']
-            self.ship = Ship(self.settings, self.ship_name, 'Stranger')
+            self.ship = Ship(self.settings, self.utils, self.ship_name, 'Stranger')
 
         self.ship.level = player['ship']['level']
         self.ship.hp = 0
@@ -168,7 +168,7 @@ class Player:
         self.ship.destroyed = player['ship']['dtry']
         self.ship.spd_level = player['ship']['spd_level']
 
-        self.ship.weapon = Weapon(self.settings, player['ship']['weapon']['name'])
+        self.ship.weapon = Weapon(self.settings, self.utils, player['ship']['weapon']['name'])
         self.ship.weapon.levelUpDmg(player['ship']['weapon']['level'])
 
         self.img_orig = self.utils.loadImage(self.ship_path)
@@ -208,7 +208,7 @@ class Player:
             else:
                 # self.ship_path = self.settings.STRANGERS[self.ship_name]['path']
                 self.ship_path = player['ship']['path']
-            self.ship = Ship(self.settings, self.ship_name)
+            self.ship = Ship(self.settings, self.utils, self.ship_name)
 
         # if not player['ship']['hp'] == self.ship.hp:
         #     self.ship.hp = player['ship']['hp']
@@ -248,7 +248,7 @@ class Player:
         if not self.ship.spd_level == player['ship']['spd_level']: self.ship.spd_level = player['ship']['spd_level']
 
         # if not self.ship.weapon == player['ship']['weapon']['name']:
-        #     self.ship.weapon = Weapon(self.settings, player['ship']['weapon']['name'], settings)
+        #     self.ship.weapon = Weapon(self.settings, self.utils, player['ship']['weapon']['name'], settings)
         #     self.ship.weapon.levelUpDmg(player['ship']['weapon']['level'])
         # else:
         #     if not self.ship.weapon.level == player['ship']['weapon']['level']:

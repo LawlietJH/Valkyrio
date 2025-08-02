@@ -1,5 +1,4 @@
-from src import (Network, Player, Settings, Utils,
-                 Chat, Minimap, Events, Menu, Window)
+from src import *
 import contextlib
 with contextlib.redirect_stdout(None):
     import pygame
@@ -12,7 +11,7 @@ import os
 
 __project__ = 'Zwem'
 __author__ = 'LawlietJH'
-__version__ = '0.0.9 (Alfa)'
+__version__ = '0.0.10 (Alfa)'
 
 __license__ = 'MIT'
 __status__ = 'Development'
@@ -99,33 +98,64 @@ def setAttack():
                 player.selected['dist'] = -1
                 player.attacking = False
 
-def lookAtEnemy():
-    # Gira hacia el enemigo
-    if player.selected['id'] >= 0 and player.attacking:
+def drawWeaponBullet(ship: Player, enemies: dict):
 
-        desX = (int(config.CENTER['x'])-int(player.x))    # Desplazamiento en X
-        desY = (int(config.CENTER['y'])-int(player.y))    # Desplazamiento en Y
+    print(ship.name, ship.id, ship.attacking, ship.selected)
+    if not (ship.selected['id'] >= 0 and ship.attacking):
+        return
 
-        player.ship.time_hp_init = 0                      # Reinicia el contador para regenracion de HP
+    if not (ship.selected['dist'] < ship.ship.weapon.dist):
+        return
 
-        p_id = player.selected['id']
+    id_ = ship.selected['id']
+    enemy = enemies[id_]
+    print(ship.name, enemy.name)
 
-        try:
-            selected_pos = int(enemies[p_id].x+desX), int(enemies[p_id].y+desY)
-        except:
-            player.selected['name'] = ''
-            player.selected['id']   = -1
-            player.selected['dist'] = -1
-            return
+    weapon = ship.ship.weapon
 
-        pposX, pposY = int(config.CENTER['x']), int(config.CENTER['y'])
+    if not weapon.shoot:
+        weapon.shoot = True
+        weapon.bullet_x = (int(config.CENTER['x'])-int(ship.x))
+        weapon.bullet_y = (int(config.CENTER['y'])-int(ship.y))
 
-        dist  = round(utils.euclideanDistance((pposX,pposY), selected_pos), 2)
-        angle = -round(utils.getAngle((pposX,pposY), selected_pos), 2)
+    if not ship.ship.weapon.perSecond():
+        weapon.shoot = False
+        weapon.bullet_x = (int(config.CENTER['x'])-int(ship.x))
+        weapon.bullet_y = (int(config.CENTER['y'])-int(ship.y))
 
-        player.selected['dist'] = dist
-        player.angle = angle
-        player.rotate(angle)
+    center = (int(ship.x)+weapon.bullet_x+100,
+              int(ship.y)+weapon.bullet_y+100)
+    rect = ship.ship.weapon.image.get_rect(center=center)
+
+    window.WIN.blit(ship.ship.weapon.img, rect)
+
+def lookAtEnemy():  # Gira hacia el enemigo
+    if not (player.selected['id'] >= 0 and player.attacking):
+        return
+
+    desX = (int(config.CENTER['x'])-int(player.x))    # Desplazamiento en X
+    desY = (int(config.CENTER['y'])-int(player.y))    # Desplazamiento en Y
+
+    player.ship.time_hp_init = 0                      # Reinicia el contador para regenracion de HP
+
+    p_id = player.selected['id']
+
+    try:
+        selected_pos = int(enemies[p_id].x+desX), int(enemies[p_id].y+desY)
+    except:
+        player.selected['name'] = ''
+        player.selected['id']   = -1
+        player.selected['dist'] = -1
+        return
+
+    pposX, pposY = int(config.CENTER['x']), int(config.CENTER['y'])
+
+    dist  = round(utils.euclideanDistance((pposX,pposY), selected_pos), 2)
+    angle = -round(utils.getAngle((pposX,pposY), selected_pos), 2)
+
+    player.selected['dist'] = dist
+    player.angle = angle
+    player.rotate(angle)
 
 def calcFrames():
     if utils.perSecond():
@@ -282,26 +312,21 @@ def drawMinimap(map_enemies_pos):
         y = (y/config.posdiv) / config.MAP[minimap.map_name]['y'] * minimap.map_h + minimap.map_y
         pygame.draw.circle(window.WIN, config.COLOR['Rojo'], (x,y), 1, 1)
 
-def drawShipAndData(ship, des, name_color):
+def drawShipAndData(ship: Player, des: int, name_color: str):
     # Draw red circle ----------------------------
     if player.selected['id'] == ship.id:    # Circulo de selección
-        pygame.draw.circle(window.WIN,
-            (255,0,0), (
-                int(ship.x)+des[0],
-                int(ship.y)+des[1]
-            ), ship.ship.base['min_dist_sel'], 1
-        )
+        center = (int(ship.x)+des[0], int(ship.y)+des[1])
+        pygame.draw.circle(window.WIN, (255,0,0), center,
+                           ship.ship.base['min_dist_sel'], 1)
+
+    # Draw Weapon Bullets ------------------------
+    # drawWeaponBullet(ship, enemies)               # TODO: Terminar función. Resolver bug sobre selected vacío en enemigos.
 
     # Draw Ship ----------------------------------
-    rect = ship.img.get_rect(
-        center = (
-            int(ship.x)+des[0],
-            int(ship.y)+des[1]
-        )
-    )
+    center = (int(ship.x)+des[0], int(ship.y)+des[1])
+    rect = ship.img.get_rect(center=center)
 
-    # Draw the outline ---------------------------
-    if player.id == ship.id:
+    if player.id == ship.id:  # Draw the outline
         color = config.COLOR['Rojo']
         # utils.perfectOutline(window.WIN, ship.img, rect, color, alpha=25, br=4)            # Contorno Negro
         utils.perfectOutline(window.WIN, ship.img, rect, color, alpha=25, br=3)            # Contorno Negro
@@ -328,6 +353,7 @@ def drawShipAndData(ship, des, name_color):
         )
         desp += text.get_height()-5
 
+    # TODO: Mostrar barra de vida y escudo cuando son seleccionados los enemigos
     # Draw HP and SP -----------------------------
     if ship.id == player.id:
         # Draw HP ------------------------------------

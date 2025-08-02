@@ -4,16 +4,17 @@ import time
 
 
 class Ship:
-    def __init__(self, settings, name: str, type: str = 'Human'):
+    def __init__(self, settings, utils, name: str, type: str = 'Human'):
         self.settings = settings
+        self.utils = utils
         self.name = name
         self.type = type
         if self.type == 'Human':
             self.base = self.settings.SHIP[name]
-            self.weapon = Weapon(self.settings, self.base['weapon'])
+            self.weapon = Weapon(self.settings, self.utils, self.base['weapon'])
         else:
             self.base = self.settings.STRANGERS[name]
-            self.weapon = Weapon(self.settings, self.base['wpn_name'])
+            self.weapon = Weapon(self.settings, self.utils, self.base['wpn_name'])
         self.destroyed = False
         self.spd_level = self.base['spd_level']
         self.level = self.base['level']

@@ -6,8 +6,9 @@ import time
 
 
 class Stranger:
-    def __init__(self, settings, name: str, id: int):
+    def __init__(self, settings, utils, name: str, id: int):
         self.settings = settings
+        self.utils = utils
 
         self.name = name
         self.ship = None
@@ -137,7 +138,7 @@ class Stranger:
         self.attacking = stranger['atk']
 
         self.ship_name = stranger['ship']['name']
-        self.ship = Ship(self.settings, self.ship_name, 'Stranger')
+        self.ship = Ship(self.settings, self.utils, self.ship_name, 'Stranger')
 
         self.ship.level = stranger['ship']['level']
         self.ship.hp = 0
@@ -163,7 +164,7 @@ class Stranger:
         self.ship.destroyed = stranger['ship']['dtry']
         self.ship.spd_level = stranger['ship']['spd_level']
 
-        self.ship.weapon = Weapon(self.settings, stranger['ship']['weapon']['name'])
+        self.ship.weapon = Weapon(self.settings, self.utils, stranger['ship']['weapon']['name'])
         self.ship.weapon.levelUpDmg(stranger['ship']['weapon']['level'])
 
     def radioactiveZone(self):
@@ -199,6 +200,7 @@ class Stranger:
 
     def setAttack(self, players: dict, game_time: int):
         # Draw Laser and damage on enemies:
+        # print(self.selected['id'])
         if self.selected['id'] >= 0 and self.attacking:
             if self.selected['dist'] < self.ship.weapon.dist:
                 id_ = self.selected['id']
