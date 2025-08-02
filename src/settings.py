@@ -119,7 +119,7 @@ class Settings:
                 'dmg': 100,         # Base damage
                 'inc': 10,          # Damage increment per level
                 'ammo': 1000,       # Ammunition
-                'dist': 400,        # Minimum distance to attack enemies
+                'dist': 320,        # Minimum distance to attack enemies
                 'pct_sp': .7,       # Damage percentage to SP
                 'mult': 1           # Damage multiplier
             },
@@ -134,8 +134,8 @@ class Settings:
             }
         }
 
-        self.baseHP = 350
-        self.baseSP = 250
+        self.baseHP = 1200
+        self.baseSP = 200
         self.SHIP = {
             'Prometheus': {
                 'path': f'{self.DIR["Images"]}/entities/Prometheus.png',
@@ -169,9 +169,9 @@ class Settings:
         }
 
         self.MAP = {
-            'Zwem':  { 'x': 200, 'y': 150 },
-            'Karon': { 'x': 250, 'y': 200 },
-            'Arkon': { 'x': 300, 'y': 250 }
+            'Arkon': { 'x': 200, 'y': 150, 'max_entities': 20},
+            'Karon': { 'x': 250, 'y': 200, 'max_entities': 25},
+            'Zwem':  { 'x': 300, 'y': 250, 'max_entities': 30}
         }
 
         self.roundRects = {}                # Created round rects

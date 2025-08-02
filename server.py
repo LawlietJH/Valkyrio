@@ -357,7 +357,7 @@ current_levels = {
 
 # STRANGERS ============================================================
 
-for i in range(20):
+for i in range(config.MAP[config.map_name]['max_entities']):
     i+=1
     if i <= 20:
         generateStranger('Iken',  1, 12)

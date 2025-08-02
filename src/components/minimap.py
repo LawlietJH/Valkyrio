@@ -5,7 +5,7 @@ class Minimap:
         self.player = player
 
         # Configuraciones del Minimapa
-        self.map_name = 'Arkon'
+        self.map_name = self.settings.map_name
         self.map_name_rect = (0,0)
         self.map_w = 150
         self.map_h = 120
