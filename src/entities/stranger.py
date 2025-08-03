@@ -138,30 +138,29 @@ class Stranger:
         self.attacking = stranger['atk']
 
         self.ship_name = stranger['ship']['name']
+
         self.ship = Ship(self.settings, self.utils, self.ship_name, 'Stranger')
 
         self.ship.level = stranger['ship']['level']
-        self.ship.hp = 0
-        self.ship.sp = 0
-        self.ship.lhp = 0
-        self.ship.lsp = 0
+        self.ship.base_hp = self.ship.hp = stranger['ship']['bhp']
+        self.ship.base_sp = self.ship.sp = stranger['ship']['bsp']
         self.ship.levelUpHP(stranger['ship']['lhp'])
         self.ship.shield_unlocked = stranger['ship']['s_unlkd']
-        self.ship.levelUpSP(stranger['ship']['lsp'])
+        self.ship.levelUpSP(stranger['ship']['lhp'])
 
-        if not stranger['ship']['chp'] == 0 \
-        and stranger['ship']['chp'] <= self.ship.lhp:
-            self.ship.chp = stranger['ship']['chp']
-        else:
-            self.ship.chp = self.ship.hp
+        # if not stranger['ship']['chp'] == 0 and stranger['ship']['chp'] <= self.ship.lhp:
+        #     self.ship.chp = stranger['ship']['chp']
+        # else:
+        #     self.ship.chp = self.ship.hp
 
-        if not stranger['ship']['csp'] == 0 \
-        and stranger['ship']['csp'] <= self.ship.lsp:
-            self.ship.csp = stranger['ship']['csp']
-        else:
-            self.ship.csp = self.ship.sp
+        # if not stranger['ship']['csp'] == 0 \
+        # and stranger['ship']['csp'] <= self.ship.lsp:
+        #     self.ship.csp = stranger['ship']['csp']
+        # else:
+        #     self.ship.csp = self.ship.sp
 
         self.ship.destroyed = stranger['ship']['dtry']
+        self.ship.base_speed = stranger['ship']['base_speed']
         self.ship.spd_level = stranger['ship']['spd_level']
 
         self.ship.weapon = Weapon(self.settings, self.utils, stranger['ship']['weapon']['name'])
@@ -387,9 +386,14 @@ class Stranger:
             self.wait = False
             self.dir = random.choice(['r','u','l','d','ru','ul','ld','dr'])
 
-        for p_id, data in players.items():
-            if data['type'] == 'Human':
-                self.lookAtPlayer(p_id, data)
+        # print(players)
+        try:
+            for p_id, data in players.items():
+                if data['type'] == 'Human':
+                    self.lookAtPlayer(p_id, data)
+        except Exception as e:
+            print(players, p_id, data)
+            print('Error', e)
 
         if self.selected['id'] >= 0:
             self.setAttack(players, game_time)

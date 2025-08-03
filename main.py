@@ -11,7 +11,7 @@ import os
 
 __project__ = 'Zwem'
 __author__ = 'LawlietJH'
-__version__ = '0.0.10 (Alfa)'
+__version__ = '0.0.11 (Alfa)'
 
 __license__ = 'MIT'
 __status__ = 'Development'
@@ -420,6 +420,7 @@ def drawShipAndData(ship: Player, des: int, name_color: str):
             x = int(ship.x)+des[0] - width/2
             y = int(ship.y)+des[1] - desp
 
+            print(cp, p)
             pct = cp / p
             position = [x, y, int(width*pct), height]
             window.drawRoundrect(name+' bg', position, config.COLOR['Verde F'],

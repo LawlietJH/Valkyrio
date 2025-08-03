@@ -68,28 +68,31 @@ def threaded_bot(stranger_id: int, stranger_name: str, level_min: int = 1, level
             'name':  f'{stranger_name} {stranger_info["type"]}',        # Stranger name and type
             'type':  'Stranger',                                        # Type of ship
             'creds': stranger_info['creds'],                            # Number of credits
-            'exp':   stranger_info['exp'],                                # Score
-            'ang':   0,                                                    # Angle
-            'atk':   False,                                                # Attacking
-            'ship': {
-                'name':    stranger_name,                                # Ship Name
-                'path':    stranger_info['path'],                        # Path of ship design
-                'level':     stranger_info['level'],                        # Stranger level
-                'lhp':     stranger_info['lhp'],                        # Health Points
-                'lsp':     stranger_info['lsp'],                        # Shield Points
-                'chp':     stranger_info['lhp']*stranger_info['hp'],    # Current Health Points
-                'csp':     stranger_info['lsp']*stranger_info['sp'],    # Current Shield Points
+            'exp':   stranger_info['exp'],                              # Score
+            'ang':   0,                                                 # Angle
+            'atk':   False,                                             # Attacking
+            'ship': {  # TODO: Mejorar estructura con objeto health y objeto shield, dentro el base, level, current.
+                'name':    stranger_name,                               # Ship Name
+                'path':    stranger_info['path'],                       # Path of ship design
+                'level':   stranger_info['level'],                      # Stranger level
+                'bhp':     stranger_info['base_hp'],                    # Base Health Points
+                'bsp':     stranger_info['base_sp'],                    # Base Shield Points
+                'lhp':     stranger_info['lhp'],                        # Level Health Points
+                'lsp':     stranger_info['lsp'],                        # Level Shield Points
+                'chp':     stranger_info['lhp']*stranger_info['base_hp'], # Current Health Points
+                'csp':     stranger_info['lsp']*stranger_info['base_sp'], # Current Shield Points
                 's_unlkd': True,                                        # Shield Unlocked
-                'dtry':    False,                                        # Destroyed
-                'spd_level': stranger_info['spd_level'],                    # Speed level
+                'dtry':    False,                                       # Destroyed
+                'base_speed': stranger_info['base_speed'],
+                'spd_level': stranger_info['spd_level'],                # Speed level
                 'weapon': {
-                    'name': stranger_info['wpn_name'],                    # Weapon name
-                    'level':  stranger_info['wpn_level']                    # Weapon level
+                    'name': stranger_info['wpn_name'],                  # Weapon name
+                    'level':stranger_info['wpn_level']                  # Weapon level
                 }
             },
             'selected': {
-                'name': '',                                                # Selected Username
-                'id':   -1,                                                # Selected ID user
+                'name': '',                                             # Selected Username
+                'id':   -1,                                             # Selected ID user
             },
             'dmginfo': {}
         }
@@ -100,11 +103,11 @@ def threaded_bot(stranger_id: int, stranger_name: str, level_min: int = 1, level
 
         print(f"[LOG] {stranger_name} ({stranger.ship.level}) Generated. ID: {stranger_id} ({int(stranger.x/config.posdiv)},{int(stranger.y/config.posdiv)})")
 
-        deltaTime = 1
+        # deltaTime = 1
 
         # TODO: Hacer opaco cuando es destruido
         while stranger.ship.chp > 0:
-            try:
+            # try:
                 game_time = int(time.perf_counter()-start_time)
 
                 stranger.chkDmgRecv(players)
@@ -114,9 +117,9 @@ def threaded_bot(stranger_id: int, stranger_name: str, level_min: int = 1, level
                 stranger.radioactiveZone()
                 stranger.randomMove(players, game_time, FPS)
 
-                deltaTime = stranger.deltaTime(FPS) / config.dtdiv
+                # deltaTime = stranger.deltaTime(FPS) / config.dtdiv
 
-            except Exception as e:
+            # except Exception as e:
                 # [DISCONNECT] Name: xD, Client Id: 96 disconnected
                 # Exception ignored in thread started by: <function threaded_bot at 0x000001A2EE59FD30>
                 # Traceback (most recent call last):
@@ -125,9 +128,9 @@ def threaded_bot(stranger_id: int, stranger_name: str, level_min: int = 1, level
                 #   File "Server.py", line 506, in setData
                 #     dmginfo = players[data['dmginfo']['id']]['dmginfo']
                 # KeyError: 96
-                if not str(e).startswith('[WinError 10054]'):
-                    print(e, 'Error')
-                break
+                # if not str(e).startswith('[WinError 10054]'):
+                #     print(e, 'Error')
+                # break
 
         print(f'[LOG] Destroyed: {stranger_name}, ID: {stranger_id}')
 
@@ -165,11 +168,11 @@ def threaded_client(conn, _id):
         'ship': {
             'level':     0,
             'name':    'Prometheus',        # Ship Name
-            'lhp':     20,                  # Health Points
-            'lsp':     20,                  # Shield Points
+            'lhp':     0,                   # Level Health Points
+            'lsp':     0,                   # Level Shield Points
             'chp':     0,                   # Current Health Points
             'csp':     0,                   # Current Shield Points
-            's_unlkd': True,                # Shield Unlocked
+            's_unlkd': False,               # Shield Unlocked
             'dtry':    False,               # Destroyed
             'spd_level': 0,                 # Speed
             'weapon': {

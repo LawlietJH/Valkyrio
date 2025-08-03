@@ -3,6 +3,7 @@ with contextlib.redirect_stdout(None):
     import pygame
 from pygame.locals import *
 
+
 class Events:
     def __init__(self, settings, server, player, enemies, minimap, chat, utils):
         self.settings = settings
@@ -38,41 +39,30 @@ class Events:
                 self.settings.show['hp-sp'] = not self.settings.show['hp-sp']
 
         #--------------------------
-
         if event.key == pygame.K_F11:                                   # F11 - Fullscreen
             self.settings.switchFullScreen()
 
         #--------------------------
-
-        if event.key == pygame.K_1:
-            if self.settings.open_menu:
+        if self.settings.open_menu:
+            if event.key == pygame.K_1:
                 self.settings.pos_tab_menu = 1
-        if event.key == pygame.K_2:
-            if self.settings.open_menu:
+            if event.key == pygame.K_2:
                 self.settings.pos_tab_menu = 2
-        if event.key == pygame.K_3:
-            if self.settings.open_menu:
+            if event.key == pygame.K_3:
                 self.settings.pos_tab_menu = 3
-        if event.key == pygame.K_4:
-            if self.settings.open_menu:
+            if event.key == pygame.K_4:
                 self.settings.pos_tab_menu = 4
-        if event.key == pygame.K_5:
-            if self.settings.open_menu:
+            if event.key == pygame.K_5:
                 self.settings.pos_tab_menu = 5
-        if event.key == pygame.K_6:
-            if self.settings.open_menu:
+            if event.key == pygame.K_6:
                 self.settings.pos_tab_menu = 6
-        if event.key == pygame.K_7:
-            if self.settings.open_menu:
+            if event.key == pygame.K_7:
                 self.settings.pos_tab_menu = 7
-        if event.key == pygame.K_8:
-            if self.settings.open_menu:
+            if event.key == pygame.K_8:
                 self.settings.pos_tab_menu = 8
-        if event.key == pygame.K_9:
-            if self.settings.open_menu:
+            if event.key == pygame.K_9:
                 self.settings.pos_tab_menu = 9
-        if event.key == pygame.K_0:
-            if self.settings.open_menu:
+            if event.key == pygame.K_0:
                 self.settings.pos_tab_menu = 0
 
         #--------------------------
@@ -117,9 +107,9 @@ class Events:
             #     self.player.creds += cost
                 self.player.ship.speedLevelDown(-10)
         if event.key == pygame.K_k:                                # K - Speed level up
-            # ~ cost = (self.player.ship.spd_level+1)
-            # ~ if self.player.creds >= cost:
-                # ~ self.player.creds -= cost
+            # cost = (self.player.ship.spd_level+1)
+            # if self.player.creds >= cost:
+                # self.player.creds -= cost
                 self.player.ship.speedLevelUp(10)
 
         if event.key == pygame.K_u:                                # U - HP level up

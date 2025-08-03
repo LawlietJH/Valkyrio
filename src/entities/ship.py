@@ -9,27 +9,32 @@ class Ship:
         self.utils = utils
         self.name = name
         self.type = type
-        if self.type == 'Human':
-            self.base = self.settings.SHIP[name]
-            self.weapon = Weapon(self.settings, self.utils, self.base['weapon'])
-        else:
-            self.base = self.settings.STRANGERS[name]
-            self.weapon = Weapon(self.settings, self.utils, self.base['wpn_name'])
+        # if self.type == 'Human':
+        #     self.weapon = Weapon(self.settings, self.utils, self.base['weapon'])
+        # else:
+        #     self.base = self.settings.STRANGERS[name]
+        #     self.weapon = Weapon(self.settings, self.utils, self.base['wpn_name'])
+        self.weapon: Weapon = None
         self.destroyed = False
-        self.spd_level = self.base['spd_level']
-        self.level = self.base['level']
+        self.base_speed = 0
+        self.spd_level = 0
+        self.level = 0
+        # self.spd_level = self.base['spd_level']
+        # self.level = self.base['level']
 
         # Health
-        self.hp  = 0                    # Health points
+        self.base_hp = 0
+        self.hp = 0                     # Health points
         self.chp = 0                    # Current Health Points
-        self.lhp = 1                    # Level Health Points
+        self.lhp = 0                    # Level Health Points
         self.pct_hp = .3                # Health Damage Percentage
         self.heal_hp = False
         self.time_hp_init = 0           # Time Counter to heal HP
 
         # Shield
         self.shield_unlocked = False
-        self.sp  = 0                    # Shield points
+        self.base_sp = 0
+        self.sp = 0                     # Shield points
         self.csp = 0                    # Current Shield Points
         self.lsp = 0                    # Level Shield Points
         self.pct_sp = .7                # Shield Damage Percentage
@@ -48,7 +53,7 @@ class Ship:
         # Aumento de velocidad en forma exponencial y=sqrt(200x+100) tomando en cuenta que
         # el nivel x=112 y=150, todo basado en: y=sqrt(max_level*current_level)
         init = 10
-        speed = self.base['speed']                                      # Velocidad base de la nave
+        speed = self.base_speed                                      # Velocidad base de la nave
         #val = math.sqrt(200*(self.spd_level+1)-100)-init                 # Aumento de velocidad en forma de parabola, basado en: y = sqrt(200x+100)
         val = 1.25*self.spd_level + (math.sqrt(100*self.spd_level)*.25)     # Generador de niveles en: y = 1.25x + sqrt(100x)*0.25 donde x=100 -> y=150
         add = init * (self.spd_level/(self.settings.MAX_SPD_LVL))
@@ -77,17 +82,18 @@ class Ship:
             self.spd_level = 0
 
     def levelUpHP(self, level: int = 1):             # Incrementa de nivel el HP
-        inc = self.base['hp'] * level
+        inc = self.base_hp * level
         self.hp += inc
         self.chp += inc
         self.lhp += level
 
     def levelUpSP(self, level: int = 1):             # Incrementa de nivel el SP
-        if self.shield_unlocked:
-            inc = self.base['sp'] * level
-            self.sp += inc
-            self.csp += inc
-            self.lsp += level
+        if not self.shield_unlocked:
+            return
+        inc = self.base_sp * level
+        self.sp += inc
+        self.csp += inc
+        self.lsp += level
 
     # Registra el daño recibido para mostrarlo
     def recvDamage(self, damage: int, pct_sp: int = None, mult: float = 1.0, draw: bool = True):

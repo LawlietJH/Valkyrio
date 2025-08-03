@@ -45,6 +45,8 @@ class Player:
             }
         }
 
+        self.base = {}
+
         self.curr_pos = (
             int(self.x/self.settings.posdiv),
             int(self.y/self.settings.posdiv)
@@ -122,7 +124,13 @@ class Player:
         self.img = pygame.transform.rotate(img, angle)
 
     def loadData(self, players):
-        player = players[self.id]
+        player: Player = players[self.id]
+
+        self.ship_name = player['ship']['name']
+        if player['type'] == 'Human':
+            self.base = self.settings.SHIP[self.ship_name]
+        # else:
+        #     self.base = self.settings.STRANGERS[self.ship_name]
 
         self.x = player['x']
         self.y = player['y']
@@ -136,19 +144,19 @@ class Player:
         self.angle = player['ang']
         self.attacking = player['atk']
 
-        self.ship_name = player['ship']['name']
         if player['type'] == 'Human':
-            self.ship_path = self.settings.SHIP[self.ship_name]['path']
+            self.ship_path = self.base['path']
             self.ship = Ship(self.settings, self.utils, self.ship_name)
         else:
             self.ship_path = player['ship']['path']
             self.ship = Ship(self.settings, self.utils, self.ship_name, 'Stranger')
 
         self.ship.level = player['ship']['level']
-        self.ship.hp = 0
-        self.ship.sp = 0
-        self.ship.lhp = 0
-        self.ship.lsp = 0
+
+        self.ship.hp = self.base['base_hp']
+        self.ship.sp = self.base['base_hp']
+        # self.ship.lhp = 0
+        # self.ship.lsp = 0
         self.ship.levelUpHP(player['ship']['lhp'])
         self.ship.shield_unlocked = player['ship']['s_unlkd']
         self.ship.levelUpSP(player['ship']['lsp'])

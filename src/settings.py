@@ -134,37 +134,18 @@ class Settings:
             }
         }
 
-        self.baseHP = 1200
-        self.baseSP = 200
         self.SHIP = {
             'Prometheus': {
                 'path': f'{self.DIR["Images"]}/entities/Prometheus.png',
                 'weapon': 'Laser',
                 'min_dist_sel': 40,
-                'level':     1,
-                'speed':   100,
+                'level': 1,
+                'speed': 100,
                 'spd_level': 0,
-                'hp':      self.baseHP,
-                'sp':      self.baseSP
-            }
-        }
-
-        self.STRANGERS = {
-            'Iken': {
-                'path':     f'{self.DIR["Images"]}/entities/Iken (Epsilon).png',
-                'level':      1,
-                'creds':    2,
-                'exp':      10,
-                'min_dist': 350,
-                'min_dist_sel': 40,
-                'wpn_name': 'Laser-mid',
-                'wpn_level':  0,
-                'speed':    50,
-                'spd_level':  0,
-                'lhp':      1,
-                'lsp':      1,
-                'hp':       50,
-                'sp':       100
+                'hp': 0,
+                'sp': 0,
+                'base_hp': 1200,
+                'base_sp': 200
             }
         }
 
@@ -258,24 +239,24 @@ class Settings:
 
     # Functions ----------------------------------
 
-    def getStranger(self, s_name, level):
+    def getStranger(self, s_name: str = 'Iken', level: int = 1):
         STRANGERS = {
             'Iken': {
-                'type':     '',
-                'path':     f'{self.DIR["Images"]}/entities/Iken ({{}}).png',
-                'level':      1,
-                'creds':    1,
-                'exp':      10,
+                'type': 'Stranger',
+                'path': f'{self.DIR["Images"]}/entities/Iken ({{}}).png',
+                'level': 1,
+                'creds': 2,
+                'exp': 10,
                 'min_dist': 350,
                 'min_dist_sel': 40,
                 'wpn_name': 'Laser-mid',
-                'wpn_level':  0,
-                'speed':    50,
-                'spd_level':  0,
-                'lhp':      1,
-                'lsp':      1,
-                'hp':       self.baseHP,
-                'sp':       self.baseSP
+                'wpn_level': 0,
+                'base_speed': 50,
+                'spd_level': 0,
+                'lhp': 1,
+                'lsp': 1,
+                'base_hp': 50,
+                'base_sp': 100
             }
         }
 
@@ -300,8 +281,8 @@ class Settings:
         stranger['type']      = stgr_type[s_name][s_type]
         stranger['level']     = level
         stranger['path']      = stranger['path'].format(stranger['type'])
-        stranger['creds']    *= level
-        stranger['exp']      *= level
+        stranger['creds']     = level
+        stranger['exp']       = level
         stranger['wpn_level'] = level-1
         stranger['spd_level'] = level-1
         stranger['lhp']       = level
