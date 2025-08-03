@@ -237,8 +237,7 @@ class Stranger:
 
     def lookAtPlayer(self, p_id: str, data: dict):
         # Gira hacia el enemigo
-        if not p_id == self.selected['id']\
-        and self.selected['id'] >= 0:
+        if not p_id == self.selected['id'] and self.selected['id'] >= 0:
             return
 
         desX = (int(self.settings.CENTER['x'])-int(self.x))     # Desplazamiento en X

@@ -156,30 +156,30 @@ def threaded_client(conn, _id):
     players[current_id] = {
         'x':     random.randrange(20*config.posdiv, (map_limits['x']-20)*config.posdiv),
         'y':     random.randrange(20*config.posdiv, (map_limits['y']-20)*config.posdiv),
-        'name':  name,                    # Username
-        'type':  'Human',                # Type of ship
-        'creds': 0,                        # Number of credits
-        'exp':   0,                        # Score
-        'ang':   0,                        # Angle
-        'atk':   False,                    # Attacking
+        'name':  name,                      # Username
+        'type':  'Human',                   # Type of ship
+        'creds': 0,                         # Number of credits
+        'exp':   0,                         # Score
+        'ang':   0,                         # Angle
+        'atk':   False,                     # Attacking
         'ship': {
             'level':     0,
-            'name':    'Prometheus',    # Ship Name
-            'lhp':     20,                # Health Points
-            'lsp':     20,                # Shield Points
-            'chp':     0,                # Current Health Points
-            'csp':     0,                # Current Shield Points
-            's_unlkd': True,            # Shield Unlocked
-            'dtry':    False,            # Destroyed
-            'spd_level': 0,                # Speed
+            'name':    'Prometheus',        # Ship Name
+            'lhp':     20,                  # Health Points
+            'lsp':     20,                  # Shield Points
+            'chp':     0,                   # Current Health Points
+            'csp':     0,                   # Current Shield Points
+            's_unlkd': True,                # Shield Unlocked
+            'dtry':    False,               # Destroyed
+            'spd_level': 0,                 # Speed
             'weapon': {
-                'name': 'Laser',        # Weapon name
-                'level': 0                # Weapon level
+                'name': 'Laser',            # Weapon name
+                'level': 0                  # Weapon level
             }
         },
         'selected': {
-            'name': '',                    # Selected Username
-            'id':   -1,                    # Selected ID user
+            'name': '',                     # Selected Username
+            'id':   -1,                     # Selected ID user
         },
         'dmginfo': {}
     }
@@ -221,9 +221,9 @@ def threaded_client(conn, _id):
                 if not player_s['csp']     == data_s['csp']:                 player_s['csp']     = data_s['csp']
                 if not player_s['s_unlkd'] == (data_s['s_unlkd'] == 'True'): player_s['s_unlkd'] = data_s['s_unlkd'] == 'True'
                 if not player_s['dtry']    == (data_s['dtry'] == 'True'):    player_s['dtry']    = data_s['dtry'] == 'True'
-                if not player_s['spd_level'] == data_s['spd_level']:             player_s['spd_level'] = data_s['spd_level']
+                if not player_s['spd_level'] == data_s['spd_level']:         player_s['spd_level'] = data_s['spd_level']
                 if not player_sw['name']   == data_sw['name']:               player_sw['name']   = data_sw['name']
-                if not player_sw['level']    == data_sw['level']:                player_sw['level']    = data_sw['level']
+                if not player_sw['level']  == data_sw['level']:              player_sw['level']  = data_sw['level']
 
                 if data['dmginfo']['dmg'] > 0 and data['dmginfo']['id'] >= 0:
 
